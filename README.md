@@ -6,7 +6,7 @@ The Quantum Leap assistant is named **Quinn** (not Queen).
 
 ```
 github/sr-ai-agents/
-  maya/knowledge/     MMI
+  maya/knowledge/     MMI (+ CS Knowledge Hub layout)
   quinn/knowledge/    Quantum Leap
   rafa/knowledge/     Refunds, invoices, payments (drafts only)
 ```
@@ -19,6 +19,8 @@ github/sr-ai-agents/
 | `responses.md` | Same content, easy to read. |
 | `corrections.jsonl` | Empty for now. Add a line here when a live ticket was wrong and you have better wording. |
 | `CHANGELOG.md` | Short log of what changed and when. |
+
+Maya also has a **Customer Service Knowledge Hub** under `maya/knowledge/` (`products-programs/`, `faqs/`, `policies/`, `sops/`, `response-guidelines/`, `escalation-rules/`, `troubleshooting/`). See `maya/knowledge/README.md`.
 
 ## How knowledge grows
 
