@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "zendesk": {
+      "command": "npx",
+      "args": ["-y", "@markusvankempen/zendesk-mcp-server"],
+      "env": {
+        "ZENDESK_SUBDOMAIN": "srglobalhelp",
+        "ZENDESK_EMAIL": "${env:ZENDESK_EMAIL}",
+        "ZENDESK_API_TOKEN": "${env:ZENDESK_API_TOKEN}"
+      }
+    }
+  }
+}
