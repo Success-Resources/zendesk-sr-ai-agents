@@ -1,0 +1,11 @@
+{
+  "name": "SR Zendesk AI agents",
+  "install": "cd service && sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3.12-venv && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install -r requirements.txt",
+  "terminals": [
+    {
+      "name": "service",
+      "command": "cd service && .venv/bin/python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload"
+    }
+  ],
+  "ports": [8000]
+}
