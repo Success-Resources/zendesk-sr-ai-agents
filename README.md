@@ -5,11 +5,15 @@ This folder is the GitHub home for Maya, Quinn and Rafa. Each assistant has its 
 The Quantum Leap assistant is named **Quinn** (not Queen).
 
 ```
-github/sr-ai-agents/
-  maya/knowledge/     MMI
-  quinn/knowledge/    Quantum Leap
+zendesk-sr-ai-agents/
+  knowledge-hub/      Topic folders (products, FAQs, policies, SOPs, …)
+  maya/knowledge/     MMI library (jsonl)
+  quinn/knowledge/    Quantum Leap library (jsonl)
   rafa/knowledge/     Refunds, invoices, payments (drafts only)
+  service/            Phase 1 FastAPI draft service
 ```
+
+Browse answers by topic in [`knowledge-hub/`](knowledge-hub/README.md). That tree matches the Customer Service Knowledge Hub: Products & Programs (MMI, TTT, EWC, GBI, NWA, Quantum Leap), FAQs, Policies, SOPs, Response Guidelines, Escalation Rules, and Troubleshooting. Files are tagged `maya.md`, `quinn.md`, or `rafa.md`.
 
 ## What lives in each knowledge folder
 
