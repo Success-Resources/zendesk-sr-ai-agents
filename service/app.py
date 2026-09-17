@@ -22,7 +22,8 @@ app = FastAPI(title="SR Zendesk AI Phase 1")
 
 @app.on_event("startup")
 def _load_knowledge() -> None:
-    ensure_hub(force=True)
+    # Bundled copy first so Vercel cold starts stay under the time limit.
+    ensure_hub(download=False)
 
 
 def _zendesk_subdomain() -> str:

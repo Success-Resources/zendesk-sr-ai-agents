@@ -45,6 +45,33 @@ def _ttl() -> float:
     return float(os.getenv("KNOWLEDGE_TTL_SECONDS") or "600")
 
 
+def _stamp_path() -> Path:
+    return Path(tempfile.gettempdir()) / "sr-zendesk-knowledge" / ".stamp"
+
+
+def _cached_hub() -> Path | None:
+    hub = Path(tempfile.gettempdir()) / "sr-zendesk-knowledge"
+    if not hub.exists():
+        return None
+    stamp = _stamp_path()
+    try:
+        age = time.time() - stamp.stat().st_mtime
+    except OSError:
+        age = time.time() * 2
+    if age >= _ttl():
+        return None
+    matches = list(hub.glob("*/knowledge-hub"))
+    if matches and matches[0].is_dir():
+        return matches[0]
+    return None
+
+
+def _count_entries(root: Path) -> int:
+    if not root.is_dir():
+        return 0
+    return sum(1 for p in root.rglob("*.md") if p.name in {"maya.md", "quinn.md", "rafa.md"})
+
+
 def bundled_hub() -> Path:
     here = Path(__file__).resolve().parent
     for candidate in (here / "knowledge-hub", here.parent / "knowledge-hub"):
@@ -80,7 +107,7 @@ def _download_github_hub() -> Path:
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = UrlRequest(url, headers=headers)
-    with urlopen(req, timeout=45) as resp:
+    with urlopen(req, timeout=8) as resp:
         data = resp.read()
     extract_root = Path(tempfile.gettempdir()) / "sr-zendesk-knowledge"
     if extract_root.exists():
@@ -93,27 +120,43 @@ def _download_github_hub() -> Path:
     hub = repo_dir / "knowledge-hub"
     if not hub.is_dir():
         raise FileNotFoundError(f"knowledge-hub missing in {repo}@{branch}")
+    _stamp_path().write_text(str(time.time()), encoding="utf-8")
     log.info("knowledge hub downloaded from GitHub repo=%s branch=%s path=%s", repo, branch, hub)
     return hub
 
 
-def ensure_hub(force: bool = False) -> Path:
+def ensure_hub(force: bool = False, download: bool = True) -> Path:
     global _hub_dir, _loaded_at, _source, _entry_count
     with _lock:
         age = time.time() - _loaded_at
-        if not force and _hub_dir and _hub_dir.is_dir() and age < _ttl():
+        if (
+            not force
+            and _hub_dir
+            and _hub_dir.is_dir()
+            and age < _ttl()
+            and _source.startswith("github")
+        ):
             return _hub_dir
-        try:
-            _hub_dir = _download_github_hub()
-            _source = f"github:{_repo()}@{_branch()}"
-        except Exception:
-            log.exception("GitHub knowledge download failed; using bundled hub")
-            _hub_dir = bundled_hub()
-            _source = "bundled"
+        cached = None if force else _cached_hub()
+        if cached is not None:
+            _hub_dir = cached
+            _source = f"github-cache:{_repo()}@{_branch()}"
+            _loaded_at = time.time()
+            _entry_count = _count_entries(_hub_dir)
+            return _hub_dir
+        if download:
+            try:
+                _hub_dir = _download_github_hub()
+                _source = f"github:{_repo()}@{_branch()}"
+                _loaded_at = time.time()
+                _entry_count = _count_entries(_hub_dir)
+                return _hub_dir
+            except Exception:
+                log.exception("GitHub knowledge download failed; using bundled hub")
+        _hub_dir = bundled_hub()
+        _source = "bundled"
         _loaded_at = time.time()
-        _entry_count = sum(
-            len(load_entries(name, refresh=False)) for name in ("maya", "quinn", "rafa")
-        )
+        _entry_count = _count_entries(_hub_dir)
         return _hub_dir
 
 
