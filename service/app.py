@@ -7,7 +7,8 @@ import json
 import logging
 import os
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request as UrlRequest
+from urllib.request import urlopen
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -62,7 +63,7 @@ def post_internal_note(ticket_id: str) -> tuple[bool, str]:
     payload = json.dumps(
         {"ticket": {"comment": {"body": NOTE_BODY, "public": False}}}
     ).encode("utf-8")
-    req = Request(
+    req = UrlRequest(
         url,
         data=payload,
         method="PUT",
@@ -118,7 +119,11 @@ async def zendesk_webhook(request: Request) -> JSONResponse:
     note_posted = False
     note_error = None
     if ticket_id:
-        note_posted, note_error = post_internal_note(ticket_id)
+        try:
+            note_posted, note_error = post_internal_note(ticket_id)
+        except Exception:
+            log.exception("zendesk note crashed ticket_id=%s", ticket_id)
+            note_error = "internal error posting note"
     else:
         note_error = "no ticket id in payload"
 
