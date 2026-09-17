@@ -10,6 +10,8 @@ zendesk-sr-ai-agents/
 
 Each topic folder uses `maya.md`, `quinn.md`, or `rafa.md`. There are no separate `maya/`, `quinn/`, or `rafa/` library folders.
 
+The Vercel service **downloads this repo from GitHub** on startup and every 10 minutes, then posts the matched email as a Zendesk internal note. Staff send that same text to the customer.
+
 ## How knowledge grows
 
 1. Wrong draft in Zendesk → better wording in the corrections Sheet.

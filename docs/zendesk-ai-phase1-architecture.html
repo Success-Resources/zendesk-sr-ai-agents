@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Phase 1: Zendesk ticket to internal note</title>
+<style>
+  :root {
+    --bg: #fff; --soft: #f6f7f9; --line: #d8dce2; --ink: #1c1f24;
+    --ink2: #5b636e; --ink3: #8a929d; --blue: #0b6bcb; --blue-soft: #eaf2fb;
+    --green: #1a7f4b; --green-soft: #e6f5ec;
+    --amber: #8a5a00; --amber-soft: #fff6e5; --amber-line: #f0d9a8;
+    --red: #9b1c1c; --red-soft: #fdecec; --red-line: #f3c4c4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; padding: 36px 28px 80px; max-width: 1080px;
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--bg);
+  }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 20px; margin: 44px 0 8px; }
+  h3 { font-size: 16px; margin: 0 0 6px; }
+  h4 { font-size: 15px; margin: 22px 0 8px; }
+  .lede { color: var(--ink2); font-size: 16.5px; max-width: 780px; }
+  .caption { color: var(--ink3); font-size: 13px; margin: 0 0 14px; }
+  svg { width: 100%; height: auto; display: block; margin: 12px 0 8px; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink2); margin-bottom: 8px; }
+  .goal, .ok, .warn, .stop {
+    border-radius: 10px; padding: 14px 16px; margin: 18px 0; max-width: 900px;
+  }
+  .goal { background: var(--green-soft); border: 1px solid #bfe3cd; }
+  .ok { background: var(--blue-soft); border: 1px solid #c5daf0; }
+  .warn { background: var(--amber-soft); border: 1px solid var(--amber-line); }
+  .stop { background: var(--red-soft); border: 1px solid var(--red-line); }
+  .step {
+    display: grid; grid-template-columns: 48px 1fr; gap: 14px;
+    padding: 18px 0; border-bottom: 1px solid var(--line);
+  }
+  .step:last-of-type { border-bottom: 0; }
+  .n {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;
+  }
+  .step p { margin: 6px 0; color: #333; }
+  ol, ul { margin: 8px 0 8px 20px; }
+  li { margin: 6px 0; }
+  ol.clicks { margin-left: 22px; }
+  ol.clicks > li { margin: 10px 0; }
+  table { width: 100%; border-collapse: collapse; border: 1px solid var(--line); margin: 10px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--soft); font-size: 12px; color: var(--ink2); text-transform: uppercase; letter-spacing: .04em; }
+  tr:last-child td { border-bottom: 0; }
+  code { background: var(--soft); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  pre {
+    background: #1c1f24; color: #eef1f4; padding: 14px 16px; border-radius: 8px;
+    overflow-x: auto; font-size: 12.5px; line-height: 1.45;
+  }
+  .path {
+    display: inline; background: var(--soft); border: 1px solid var(--line);
+    padding: 2px 8px; border-radius: 6px; font-size: 13.5px;
+  }
+  .who { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0; }
+  .who div { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--soft); }
+  .who b { display: block; font-size: 17px; margin-bottom: 4px; }
+  .who span { font-size: 13.5px; color: var(--ink2); }
+  .toc { background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 20px 0; }
+  .toc a { color: var(--blue); }
+  .done {
+    background: var(--green-soft); border: 1px solid #bfe3cd; border-radius: 10px;
+    padding: 12px 14px; margin: 16px 0;
+  }
+  details { margin: 14px 0; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: #fff; }
+  summary { cursor: pointer; font-weight: 650; }
+  .jump { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 8px; }
+  .jump a {
+    background: var(--blue); color: #fff; text-decoration: none; padding: 8px 12px;
+    border-radius: 8px; font-size: 13.5px; font-weight: 650;
+  }
+  @media (max-width: 800px) { .who { grid-template-columns: 1fr; } .step { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Phase 1: a Zendesk ticket becomes an internal note</h1>
+<p class="lede">The customer never sees this reply yet. A person still sends the real email. The assistant only writes a draft inside the ticket, as an internal note.</p>
+
+<div class="goal">
+  <strong>What “done” looks like for Phase 1.</strong>
+  A ticket is created in Zendesk. A few seconds later, an internal note appears on that same ticket. The note is a draft answer, written from the GitHub knowledge base. Staff can copy or edit it, then send it themselves.
+</div>
+
+<div class="jump">
+  <a href="#step1">Go to Step 1 — Zendesk token</a>
+  <a href="#step2">Go to Step 2 — Python on Vercel</a>
+</div>
+
+<h2>The picture</h2>
+<p class="caption">Read left to right, then down. Grey arrows are automatic. Blue is the draft coming back into Zendesk, hidden from the customer.</p>
+
+<svg viewBox="0 0 1040 620" role="img" aria-label="Architecture from Zendesk ticket to internal note">
+  <defs>
+    <marker id="g" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#5b636e"/></marker>
+    <marker id="b" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="#0b6bcb"/></marker>
+  </defs>
+
+  <rect x="20" y="20" width="220" height="88" rx="10" fill="#f6f7f9" stroke="#d8dce2"/>
+  <text x="36" y="48" font-size="13" font-weight="700" fill="#1c1f24">1. Customer writes</text>
+  <text x="36" y="70" font-size="12" fill="#5b636e">Email or WhatsApp</text>
+  <text x="36" y="88" font-size="12" fill="#5b636e">arrives as usual</text>
+
+  <line x1="244" y1="64" x2="276" y2="64" stroke="#5b636e" stroke-width="1.6" marker-end="url(#g)"/>
+
+  <rect x="284" y="20" width="240" height="88" rx="10" fill="#f6f7f9" stroke="#d8dce2"/>
+  <text x="300" y="48" font-size="13" font-weight="700" fill="#1c1f24">2. Zendesk ticket</text>
+  <text x="300" y="70" font-size="12" fill="#5b636e">Ticket is created</text>
+  <text x="300" y="88" font-size="12" fill="#5b636e">Tags: mmo_event, ql, refund</text>
+
+  <line x1="528" y1="64" x2="560" y2="64" stroke="#5b636e" stroke-width="1.6" marker-end="url(#g)"/>
+
+  <rect x="568" y="20" width="240" height="88" rx="10" fill="#f6f7f9" stroke="#d8dce2"/>
+  <text x="584" y="48" font-size="13" font-weight="700" fill="#1c1f24">3. Trigger + webhook</text>
+  <text x="584" y="70" font-size="12" fill="#5b636e">“Notify webhook”</text>
+  <text x="584" y="88" font-size="12" fill="#5b636e">sends the ticket JSON out</text>
+
+  <line x1="812" y1="64" x2="844" y2="64" stroke="#5b636e" stroke-width="1.6" marker-end="url(#g)"/>
+
+  <rect x="852" y="20" width="168" height="88" rx="10" fill="#eaf2fb" stroke="#0b6bcb" stroke-width="1.6"/>
+  <text x="868" y="48" font-size="13" font-weight="700" fill="#0b6bcb">4. Python API</text>
+  <text x="868" y="70" font-size="12" fill="#5b636e">Vercel Hobby</text>
+  <text x="868" y="88" font-size="12" fill="#5b636e">*.vercel.app</text>
+
+  <line x1="936" y1="108" x2="936" y2="148" stroke="#5b636e" stroke-width="1.6" marker-end="url(#g)"/>
+
+  <rect x="20" y="156" width="1000" height="168" rx="12" fill="#f6f7f9" stroke="#d8dce2"/>
+  <text x="36" y="182" font-size="13" font-weight="700" fill="#1c1f24">Inside the Python service (this is where the AI agent lives)</text>
+
+  <rect x="36" y="198" width="220" height="106" rx="8" fill="#fff" stroke="#d8dce2"/>
+  <text x="48" y="224" font-size="12" font-weight="700" fill="#1c1f24">A. Check + queue</text>
+  <text x="48" y="244" font-size="11.5" fill="#5b636e">Is this really from</text>
+  <text x="48" y="260" font-size="11.5" fill="#5b636e">Zendesk? Put the job</text>
+  <text x="48" y="276" font-size="11.5" fill="#5b636e">in a queue.</text>
+
+  <line x1="260" y1="251" x2="288" y2="251" stroke="#5b636e" stroke-width="1.4" marker-end="url(#g)"/>
+
+  <rect x="296" y="198" width="220" height="106" rx="8" fill="#fff" stroke="#d8dce2"/>
+  <text x="308" y="224" font-size="12" font-weight="700" fill="#1c1f24">B. Pick the assistant</text>
+  <text x="308" y="244" font-size="11.5" fill="#5b636e">mmo_event → Maya</text>
+  <text x="308" y="260" font-size="11.5" fill="#5b636e">ql → Quinn</text>
+  <text x="308" y="276" font-size="11.5" fill="#5b636e">refund_request → Rafa</text>
+
+  <line x1="520" y1="251" x2="548" y2="251" stroke="#5b636e" stroke-width="1.4" marker-end="url(#g)"/>
+
+  <rect x="556" y="198" width="220" height="106" rx="8" fill="#fff" stroke="#d8dce2"/>
+  <text x="568" y="224" font-size="12" font-weight="700" fill="#1c1f24">C. Read knowledge</text>
+  <text x="568" y="244" font-size="11.5" fill="#5b636e">Load answers from</text>
+  <text x="568" y="260" font-size="11.5" fill="#5b636e">GitHub folders</text>
+  <text x="568" y="276" font-size="11.5" fill="#5b636e">maya / quinn / rafa</text>
+
+  <line x1="780" y1="251" x2="808" y2="251" stroke="#5b636e" stroke-width="1.4" marker-end="url(#g)"/>
+
+  <rect x="816" y="198" width="184" height="106" rx="8" fill="#fff" stroke="#d8dce2"/>
+  <text x="828" y="224" font-size="12" font-weight="700" fill="#1c1f24">D. Write a draft</text>
+  <text x="828" y="244" font-size="11.5" fill="#5b636e">An AI model writes</text>
+  <text x="828" y="260" font-size="11.5" fill="#5b636e">using only those</text>
+  <text x="828" y="276" font-size="11.5" fill="#5b636e">approved answers</text>
+
+  <rect x="20" y="348" width="320" height="100" rx="10" fill="#eaf2fb" stroke="#0b6bcb" stroke-width="1.6"/>
+  <text x="36" y="376" font-size="13" font-weight="700" fill="#0b6bcb">GitHub knowledge</text>
+  <text x="36" y="396" font-size="12" fill="#5b636e">Success-Resources / zendesk-sr-ai-agents</text>
+  <text x="36" y="414" font-size="12" fill="#5b636e">maya/knowledge  quinn/knowledge  rafa/knowledge</text>
+  <text x="36" y="432" font-size="12" fill="#5b636e">Python pulls these files when it starts, or on a schedule</text>
+
+  <line x1="340" y1="398" x2="666" y2="304" stroke="#5b636e" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#g)"/>
+
+  <rect x="380" y="348" width="640" height="100" rx="10" fill="#e6f5ec" stroke="#1a7f4b" stroke-width="1.6"/>
+  <text x="396" y="376" font-size="13" font-weight="700" fill="#1a7f4b">5. Back to Zendesk as an INTERNAL note</text>
+  <text x="396" y="396" font-size="12" fill="#5b636e">Python calls the Zendesk API: add a private comment on the ticket.</text>
+  <text x="396" y="414" font-size="12" fill="#5b636e">The customer cannot see it. Staff can. Tag: ai_draft_only.</text>
+  <text x="396" y="432" font-size="12" fill="#5b636e">A person still writes the public reply, or copies the draft and sends it.</text>
+
+  <line x1="936" y1="304" x2="700" y2="348" stroke="#0b6bcb" stroke-width="1.8" marker-end="url(#b)"/>
+
+  <text x="20" y="490" font-size="13" font-weight="700" fill="#1c1f24">Where the “AI agent” actually is</text>
+  <text x="20" y="512" font-size="13" fill="#5b636e">It is not a separate app in Zendesk, and it is not GitHub by itself. It is a small program inside the Python service:</text>
+  <text x="20" y="532" font-size="13" fill="#5b636e">pick Maya, Quinn or Rafa  →  look up answers in GitHub  →  ask an AI model to draft  →  post the draft as an internal note.</text>
+  <text x="20" y="560" font-size="13" fill="#5b636e">GitHub only stores the knowledge. Zendesk only stores the tickets. Python is the middle that talks to both.</text>
+  <text x="20" y="588" font-size="13" fill="#5b636e">Phase 1 never posts a public comment. Public replies stay with people until a later phase.</text>
+</svg>
+
+<div class="legend">
+  <span>Grey arrow: automatic path</span>
+  <span>Dashed line: reading the knowledge files</span>
+  <span>Blue/green: draft coming back, hidden from the customer</span>
+</div>
+
+<div class="who">
+  <div><b>Maya</b><span>MMI tickets. Draft from the 82 MMI answers.</span></div>
+  <div><b>Quinn</b><span>Quantum Leap tickets. Draft from the 41 QL answers.</span></div>
+  <div><b>Rafa</b><span>Refund and money tickets. Draft only. A person always sends.</span></div>
+</div>
+
+<h2>How one ticket moves, in words</h2>
+<ol>
+  <li>A customer emails. Zendesk creates a ticket.</li>
+  <li>Your existing tags still apply (MMI, QL, refund, and so on).</li>
+  <li>A new trigger fires: “this ticket was created, send it to our Python address.”</li>
+  <li>Python checks the request is really from Zendesk, then queues the work so Zendesk does not time out.</li>
+  <li>Python looks at the tags and picks Maya, Quinn or Rafa. If it cannot tell, it writes a short internal note: “needs a person.”</li>
+  <li>Python reads that assistant’s <code>responses.jsonl</code> from GitHub.</li>
+  <li>An AI model writes a draft using only those answers. It is told not to invent prices or approve refunds.</li>
+  <li>Python posts that draft on the ticket as an <strong>internal note</strong>. The customer does not see it.</li>
+  <li>A person opens the ticket, reads the note, and sends the real reply.</li>
+</ol>
+
+<h2>Build this, step by step</h2>
+<p class="caption">Do these in order. Today: only Step 1 and Step 2. Do not skip to the AI model until Zendesk can already talk to Python.</p>
+
+<div class="toc">
+  <strong>Order</strong>
+  <ol>
+    <li><a href="#step1">Zendesk: your account + API token</a> — you can do this now, using your own login.</li>
+    <li><a href="#step2">Vercel + Python service</a> — a free public HTTPS URL (Hobby plan).</li>
+    <li>Webhook + trigger (after the URL exists).</li>
+    <li>Python posts a fake internal note (still no AI).</li>
+    <li>Load GitHub knowledge.</li>
+    <li>Route Maya / Quinn / Rafa by tags.</li>
+    <li>Turn on the AI draft.</li>
+    <li>Three Views for reviewers.</li>
+  </ol>
+</div>
+
+<!-- ===================== STEP 1 ===================== -->
+<div class="step" id="step1">
+  <div class="n">1</div>
+  <div>
+    <h3>Zendesk: use your own account, then create an API token</h3>
+
+    <div class="ok">
+      <strong>Yes — use your personal Zendesk account for Phase 1.</strong>
+      You do not need a new “AI Assistant” user, and you do not need a new email, to get the first connection working.
+      When the Python service posts an internal note, that note will appear as <em>you</em> (your name in Zendesk). That is fine while you are testing.
+      A dedicated “AI Assistant” user is optional later, so staff can see which notes came from the machine. Open the later section at the bottom of this step if you want that.
+    </div>
+
+    <h4>What an API token is</h4>
+    <p>It is a long password that lets a program talk to Zendesk as you. The program will use:</p>
+    <ul>
+      <li>Your Zendesk login <strong>email</strong></li>
+      <li>The word <code>/token</code> after that email</li>
+      <li>The <strong>API token</strong> instead of your real password</li>
+    </ul>
+    <p>Example (never put a real token in GitHub):</p>
+    <pre>Username: you@successresources.com/token
+Password:  the-long-token-you-copied-once</pre>
+    <p>Zendesk tokens are account-wide. They are not “owned” by one person. The <em>email</em> you put in the program is what decides whose name appears on the internal note. For now, that email is yours.</p>
+
+    <h4>You must be an administrator</h4>
+    <p>Only an admin can turn on token access and create a token.</p>
+    <ol class="clicks">
+      <li>Log into Zendesk as you normally do.</li>
+      <li>Look for the four-square <strong>Zendesk Products</strong> icon (top of the screen) and open <strong>Admin Center</strong>.
+        If you cannot see Admin Center, you are an agent only. Ask an admin to either make you an admin, or to do the token steps below and send you the token privately.</li>
+    </ol>
+
+    <h4>Find your subdomain (you will need this in Python)</h4>
+    <p>Look at the browser address bar while you are in Zendesk. It looks like:</p>
+    <pre>https://YOURSUBDOMAIN.zendesk.com/...</pre>
+    <p>The part before <code>.zendesk.com</code> is the subdomain. Write it down. Example: if the URL is <code>https://successresources.zendesk.com</code>, the subdomain is <code>successresources</code>.</p>
+
+    <h4>Turn on API token access</h4>
+    <p>Tokens are off until an admin switches them on.</p>
+    <ol class="clicks">
+      <li>In Admin Center, open <span class="path">Apps and integrations</span>.</li>
+      <li>Open <span class="path">APIs → API configuration</span>.</li>
+      <li>Tick <strong>Allow API token access</strong>.</li>
+      <li>Click <strong>Save</strong>.</li>
+    </ol>
+    <p>If this page is missing, you are not an admin, or the account cannot use API tokens (see the date warning below).</p>
+
+    <h4>Create the token</h4>
+    <ol class="clicks">
+      <li>Still in Admin Center, open <span class="path">Apps and integrations → APIs → API tokens</span>.</li>
+      <li>Click <strong>Add API token</strong>.</li>
+      <li>Description: <code>SR Phase 1 internal notes — Vercel</code> (any clear name is fine).</li>
+      <li>Click <strong>Save</strong>. Zendesk shows the full token <strong>once</strong>.</li>
+      <li>Copy it immediately into a password manager (or a notepad you will not email). You will never see the full token again after you close the window.</li>
+      <li>Click <strong>Save</strong> again to leave the screen.</li>
+    </ol>
+
+    <div class="stop">
+      <strong>Do not put this token in GitHub, in Slack, or in this project folder.</strong>
+      Treat it like a password. If you ever paste it into a chat or a screenshot, deactivate that token in the same API tokens list and make a new one.
+    </div>
+
+    <h4>Store these three values</h4>
+    <table>
+      <thead><tr><th>Name</th><th>What to save</th></tr></thead>
+      <tbody>
+        <tr><td>Subdomain</td><td>The part before <code>.zendesk.com</code></td></tr>
+        <tr><td>Email</td><td>The email you use to log into Zendesk (your personal account)</td></tr>
+        <tr><td>API token</td><td>The long string you copied once</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Prove the token works (on your Windows PC, before any hosting)</h4>
+    <p>Open PowerShell. Paste this, then replace the three values in quotes. Press Enter.</p>
+<pre>$sub   = "YOURSUBDOMAIN"
+$email = "you@your-email.com"
+$token = "PASTE_THE_TOKEN_HERE"
+
+$pair = "${email}/token:${token}"
+$b64  = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
+Invoke-RestMethod -Uri "https://$sub.zendesk.com/api/v2/users/me.json" -Headers @{ Authorization = "Basic $b64" }
+</pre>
+    <p>If it worked, PowerShell prints your Zendesk user, including your name and email. Step 1 is done.</p>
+    <p>If you get <code>401</code> or “Couldn’t authenticate you”:</p>
+    <ul>
+      <li>API token access is still off, or</li>
+      <li>The email is not exactly your Zendesk login email, or</li>
+      <li>A space was copied with the token, or</li>
+      <li>You are not an agent/admin on that account.</li>
+    </ul>
+
+    <div class="warn">
+      <strong>Date warning (Zendesk is retiring API tokens).</strong>
+      New API tokens can still be created on existing accounts until <strong>27 October 2026</strong>. After that, Zendesk wants OAuth instead. All API tokens stop working on <strong>30 April 2027</strong>.
+      Create this token now, keep using it for Phase 1, and plan to switch the Python service to OAuth later. If <strong>Add API token</strong> is missing, your account may already be blocked from new tokens — say so and we will set up OAuth instead.
+    </div>
+
+    <div class="done">
+      <strong>Step 1 is complete when:</strong> you have subdomain + your email + a token, and the PowerShell test printed your Zendesk user.
+    </div>
+
+    <details>
+      <summary>Later (not now): add a user called AI Assistant</summary>
+      <p>Only do this when you want internal notes to show a machine name instead of your name. You still do not need a special “AI email inbox”.</p>
+      <ul>
+        <li>Zendesk needs a <strong>unique</strong> email that is not already used by you or anyone else on the account. You cannot reuse your own login email.</li>
+        <li>A real mailbox is best, for example <code>ai-assistant@yourcompany.com</code>, so you can accept the Zendesk invite. A plus-alias such as <code>you+ai@gmail.com</code> sometimes works if Zendesk accepts it.</li>
+        <li>The user must be an <strong>Agent</strong> (or Admin), not an end-user. End-users cannot post internal notes. A Light Agent is often too limited for the API.</li>
+        <li>Adding an Agent usually costs an extra paid seat. That is why Phase 1 uses your account.</li>
+        <li>After the user exists, you only change the Python <code>ZENDESK_EMAIL</code> to that user’s email. You can keep the same API token.</li>
+        <li>Then, in the trigger (Step 3), ignore comments from that user so the bot cannot loop.</li>
+      </ul>
+      <p>Until then: skip this. Your personal account is the correct Phase 1 setup.</p>
+    </details>
+  </div>
+</div>
+
+<!-- ===================== STEP 2 ===================== -->
+<div class="step" id="step2">
+  <div class="n">2</div>
+  <div>
+    <h3>Put a tiny Python service on Vercel (free Hobby plan)</h3>
+
+    <div class="ok">
+      <strong>No Hostinger VPS. No extra monthly server bill for Phase 1.</strong>
+      Vercel Hobby is free. It gives you HTTPS and a public URL such as
+      <code>https://zendesk-sr-ai-agents.vercel.app</code>.
+      Your affordablecloudsecurity.com website stays where it is. Do not add this API into the existing workshop Vercel project — create a <strong>new</strong> project.
+    </div>
+
+    <p>Vercel does not keep a server switched on. When Zendesk (or you) call the URL, Vercel starts the Python app, it answers, then it sleeps. That is enough for Phase 1.</p>
+
+    <h4>2a. The Python program (already in this project)</h4>
+    <p>The starter lives at <code>github/sr-ai-agents/service/</code>. For Step 2 it only does two things:</p>
+    <ul>
+      <li><code>GET /health</code> → returns <code>{"ok": true, "phase": 1}</code> so you can test in a browser.</li>
+      <li><code>POST /zendesk/webhook</code> → accepts JSON, writes a log line, replies <code>{"received": true}</code>. No AI yet. No Zendesk note yet.</li>
+    </ul>
+    <p>That folder is already on your personal GitHub (<code>rayriakram/success-resources</code>). Vercel Hobby will deploy from there. The company repo can keep a copy of the same files; Vercel just cannot import that private org repo on the free plan.</p>
+
+    <div class="stop">
+      <strong>Why Deploy is greyed out.</strong>
+      Vercel Hobby <em>cannot</em> deploy from a <strong>private repo inside a GitHub organisation</strong>.
+      <code>Success-Resources/zendesk-sr-ai-agents</code> is exactly that, so the Deploy button stays disabled (sometimes with a “upgrade to Pro” message).
+      Your workshop site worked because it was not this private org repo.
+      For Phase 1, import the Python app from your <strong>personal</strong> GitHub instead. The company repo can stay the knowledge home. You can point Vercel at the org later if you pay for Pro.
+    </div>
+
+    <h4>2b. Create a new Vercel project (not the workshop site)</h4>
+    <ol class="clicks">
+      <li>If you already started an import of <code>Success-Resources/zendesk-sr-ai-agents</code>, cancel it. Go back to the Vercel dashboard.</li>
+      <li>Open <a href="https://vercel.com/new" target="_blank" rel="noopener">vercel.com/new</a> and log in with GitHub.</li>
+      <li>Import the personal repo <strong>rayriakram/success-resources</strong> (your GitHub, not the Success-Resources org).
+        Search for <code>success-resources</code> if the list is long.</li>
+      <li>On the configure screen, click <strong>Root Directory → Edit</strong> and set it to:
+        <pre>github/sr-ai-agents/service</pre>
+        That folder is where <code>app.py</code> lives in the personal repo. If you set only <code>service</code>, Vercel will not find the app and Deploy can stay disabled.</li>
+      <li>Framework should show <strong>FastAPI</strong> or <strong>Other</strong>. Leave Build Command and Output empty.</li>
+      <li>Skip environment variables for this first deploy (see 2c). An empty variable row also greys out Deploy.</li>
+      <li>Click <strong>Deploy</strong>.</li>
+    </ol>
+
+    <h4>2c. Put secrets in Vercel after the first deploy</h4>
+    <p>Do this only when <code>/health</code> already works. Project → Settings → Environment Variables. Add these (Production, Preview, and Development). Every row must have a <strong>value</strong> — do not add <code>ZENDESK_WEBHOOK_SECRET</code> until you have one from Step 3.</p>
+    <table>
+      <thead><tr><th>Name</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td><code>ZENDESK_SUBDOMAIN</code></td><td>The part before <code>.zendesk.com</code></td></tr>
+        <tr><td><code>ZENDESK_EMAIL</code></td><td>Your Zendesk login email from Step 1</td></tr>
+        <tr><td><code>ZENDESK_API_TOKEN</code></td><td>The token you copied once</td></tr>
+      </tbody>
+    </table>
+    <p>Then <strong>Redeploy</strong> the production deployment so the values load.</p>
+    <div class="stop">
+      Never paste the API token into the GitHub repo, into <code>app.py</code>, or into a screenshot of the workshop site.
+    </div>
+
+    <h4>2d. Deploy</h4>
+    <ol class="clicks">
+      <li>Click <strong>Deploy</strong>. Wait until the status is Ready (usually under a minute).</li>
+      <li>Open the deployment. Copy the Production URL. It looks like:
+        <pre>https://zendesk-sr-ai-agents.vercel.app</pre>
+        Yours may include a random word. That URL is what Zendesk will call later. Write it down.
+      </li>
+    </ol>
+
+    <h4>2e. Test from your browser</h4>
+    <p>Open (use your real Vercel URL):</p>
+    <pre>https://YOUR-PROJECT.vercel.app/health</pre>
+    <p>You should see <code>{"ok":true,"phase":1}</code>.</p>
+    <p>Then, from PowerShell on your PC:</p>
+<pre>Invoke-RestMethod -Method POST `
+  -Uri "https://YOUR-PROJECT.vercel.app/zendesk/webhook" `
+  -ContentType "application/json" `
+  -Body '{"id": 1, "subject": "test"}'
+</pre>
+    <p>You should see <code>received: True</code>.</p>
+    <p>To see the log line: Vercel → this project → <strong>Logs</strong> (or the deployment → Functions). You should see <code>webhook received ticket_id=1</code>.</p>
+
+    <div class="done">
+      <strong>Step 2 is complete when:</strong> <code>/health</code> works in the browser over https, and the POST test returns <code>received</code>.
+      Zendesk is not connected yet. That is Step 3. Stop here until both tests work.
+    </div>
+
+    <details>
+      <summary>If something fails</summary>
+      <ul>
+        <li>Deploy button grey / “upgrade to Pro” → you imported the private org repo. Cancel and import <code>rayriakram/success-resources</code> instead.</li>
+        <li>Deploy still grey after switching repo → Root Directory must be <code>github/sr-ai-agents/service</code>, and there must be no empty Environment Variable row.</li>
+        <li>Build cannot find FastAPI / <code>app</code> → Root Directory is wrong. Fix it in Project Settings → General → Root Directory, then Redeploy.</li>
+        <li><code>/health</code> is 404 → you opened the workshop project URL by mistake, or Root Directory is wrong.</li>
+        <li>You added env vars after the first deploy → they often do not apply until you <strong>Redeploy</strong> the production deployment.</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>Later (optional): use zendesk-ai.affordablecloudsecurity.com</summary>
+      <p>You do not need this for Phase 1. The <code>*.vercel.app</code> URL is enough for Zendesk.</p>
+      <ol>
+        <li>In the Vercel project: Settings → Domains → add <code>zendesk-ai.affordablecloudsecurity.com</code>.</li>
+        <li>Vercel shows a CNAME. In Hostinger DNS for affordablecloudsecurity.com, add a CNAME:
+          host <code>zendesk-ai</code> → the value Vercel gives (often <code>cname.vercel-dns.com</code>).</li>
+        <li>Wait for DNS, then test <code>https://zendesk-ai.affordablecloudsecurity.com/health</code>.</li>
+      </ol>
+      <p>This does not move your main website. It only adds a subdomain.</p>
+    </details>
+
+    <div class="warn">
+      Hobby is free for a <strong>personal</strong> GitHub repo (including private). It is not free for a private repo under the Success-Resources GitHub organisation. Pay for Vercel Pro only if you later want Vercel to deploy directly from <code>Success-Resources/zendesk-sr-ai-agents</code>.
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="n">3</div>
+  <div>
+    <h3>Connect Zendesk to that URL</h3>
+    <p>Do this only after Step 2’s <code>/health</code> page works. Admin Center → Apps and integrations → Webhooks → create a webhook pointing at <code>https://YOUR-PROJECT.vercel.app/zendesk/webhook</code>. Turn on signing (HMAC). Copy the signing secret into the Vercel project: Settings → Environment Variables → <code>ZENDESK_WEBHOOK_SECRET</code>. Then Redeploy so the new secret is loaded.</p>
+    <p>Then create a trigger:</p>
+    <ul>
+      <li>When: Ticket is created (not “updated” — that avoids loops while notes come from your own user)</li>
+      <li>Then: Notify webhook, send the ticket id, subject, description, tags, requester name</li>
+    </ul>
+    <p>Test: create a dummy ticket. In Vercel → this project → Logs, you should see a POST. If you do not, stop here and fix the webhook before adding any AI.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="n">4</div>
+  <div>
+    <h3>Python posts a fake internal note</h3>
+    <p>When a ticket arrives, Python calls Zendesk with the token from Step 1:</p>
+    <ul>
+      <li>URL like <code>https://YOURSUBDOMAIN.zendesk.com/api/v2/tickets/{id}.json</code></li>
+      <li>Add a comment with <code>public: false</code></li>
+      <li>Text can be: “Phase 1 test. The service received this ticket.”</li>
+    </ul>
+    <p>Open the ticket as an agent. You should see a private note in your name. The customer should see nothing new. When this works, the pipes are correct. The AI is not involved yet.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="n">5</div>
+  <div>
+    <h3>Load the knowledge from GitHub</h3>
+    <p>The Python service downloads <code>Success-Resources/zendesk-sr-ai-agents</code> (zip of <code>main</code>) on startup and about every 10 minutes. It reads the email answers under <code>knowledge-hub/</code> (<code>maya.md</code>, <code>quinn.md</code>, <code>rafa.md</code>). If GitHub is down, it uses the bundled copy next to <code>app.py</code>.</p>
+    <p>GitHub is the source of answers. The internal note is that email text, so staff can send the same words to the customer. Open <code>/health</code> and check <code>source</code> is <code>github:Success-Resources/zendesk-sr-ai-agents@main</code>.</p>
+    <p>If the repo is private, set Vercel env <code>GITHUB_TOKEN</code> (a GitHub personal access token with <code>repo</code> read) and Redeploy.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="n">6</div>
+  <div>
+    <h3>Pick Maya, Quinn or Rafa</h3>
+    <p>Use the tags Zendesk already applies. Do not ask the AI to guess if a tag is present.</p>
+    <table>
+      <thead><tr><th>Ticket tag</th><th>Assistant</th><th>Knowledge file</th></tr></thead>
+      <tbody>
+        <tr><td><code>mmo_event</code></td><td>Maya</td><td>maya/knowledge/responses.jsonl</td></tr>
+        <tr><td><code>ql</code></td><td>Quinn</td><td>quinn/knowledge/responses.jsonl</td></tr>
+        <tr><td><code>refund_request</code> or <code>finance_related</code></td><td>Rafa</td><td>rafa/knowledge/responses.jsonl</td></tr>
+        <tr><td>none of the above</td><td>No assistant</td><td>Internal note: “needs a person to classify”</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="step">
+  <div class="n">7</div>
+  <div>
+    <h3>Turn on the AI draft</h3>
+    <p>Only after steps 1 to 6 work. The service then:</p>
+    <ol>
+      <li>Takes the customer’s message.</li>
+      <li>Finds the closest questions in that assistant’s file.</li>
+      <li>Sends those answers plus the customer message to an AI model (any provider, behind one function in your code).</li>
+      <li>Tells the model: use only this knowledge, do not invent prices, do not approve refunds, write a draft for staff.</li>
+      <li>Posts the result as an internal note (in your name for now, or as AI Assistant later).</li>
+    </ol>
+    <p>Add a tag such as <code>ai_draft_only</code> so you can make a View of tickets that already have a draft.</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="n">8</div>
+  <div>
+    <h3>Make the three Views for the reviewers</h3>
+    <p>Same as any other Zendesk View:</p>
+    <ul>
+      <li>Maya sent drafts: tag <code>ai_draft_only</code> and <code>mmo_event</code></li>
+      <li>Quinn sent drafts: tag <code>ai_draft_only</code> and <code>ql</code></li>
+      <li>Rafa waiting: tag <code>ai_draft_only</code> and <code>refund_request</code></li>
+    </ul>
+    <p>They open the ticket, read the internal note, and send the public reply themselves. No extra buttons.</p>
+  </div>
+</div>
+
+<h2>What you need to collect before you write more code</h2>
+<table>
+  <thead><tr><th>Item</th><th>Where it comes from</th></tr></thead>
+  <tbody>
+    <tr><td>Zendesk subdomain</td><td>The part before .zendesk.com in your browser</td></tr>
+    <tr><td>Your Zendesk email + API token</td><td>Step 1. Your personal account is enough for Phase 1</td></tr>
+    <tr><td>Webhook signing secret</td><td>Created with the webhook in Step 3</td></tr>
+    <tr><td>Public URL of the Python service</td><td>Vercel production URL from Step 2, for example <code>https://YOUR-PROJECT.vercel.app</code></td></tr>
+    <tr><td>GitHub repo access</td><td>Vercel Hobby: import <code>rayriakram/success-resources</code>, Root Directory <code>github/sr-ai-agents/service</code>. Company knowledge repo stays <code>Success-Resources/zendesk-sr-ai-agents</code>.</td></tr>
+    <tr><td>An AI model key</td><td>Not needed until Step 7. Store it in Vercel Environment Variables, not in GitHub</td></tr>
+  </tbody>
+</table>
+
+<h2>Safety for Phase 1</h2>
+<ul>
+  <li>Every comment the service posts must have <code>public: false</code>.</li>
+  <li>The first trigger must be “Ticket is created”, so your own internal notes cannot loop.</li>
+  <li>One internal note per ticket in this phase. Do not keep rewriting the same ticket.</li>
+  <li>If the model is unsure, the note should say so, and a person answers.</li>
+</ul>
+
+<h2>What this phase is not</h2>
+<p>The assistant does not email the customer. It does not close the ticket. It does not approve money. Those come later, and only for Maya and Quinn on simple questions, after the drafts are consistently good.</p>
+
+</body>
+</html>

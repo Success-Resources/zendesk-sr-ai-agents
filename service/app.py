@@ -1,4 +1,4 @@
-"""Phase 1: receive Zendesk webhooks and post a private internal note. No AI yet."""
+"""Phase 1: Zendesk webhook → GitHub knowledge hub → private note (exact customer email)."""
 
 from __future__ import annotations
 
@@ -12,13 +12,17 @@ from urllib.request import urlopen
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from knowledge import draft_note, ensure_hub, knowledge_status
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("zendesk_ai")
 
 app = FastAPI(title="SR Zendesk AI Phase 1")
 
-from knowledge import draft_note, hub_root
+
+@app.on_event("startup")
+def _load_knowledge() -> None:
+    ensure_hub(force=True)
 
 
 def _zendesk_subdomain() -> str:
@@ -101,8 +105,7 @@ def health() -> dict:
         "ok": True,
         "phase": 1,
         "zendesk_configured": _zendesk_configured(),
-        "knowledge_hub": str(hub_root()),
-        "knowledge_hub_exists": hub_root().is_dir(),
+        **knowledge_status(),
     }
 
 
@@ -131,7 +134,10 @@ async def zendesk_webhook(request: Request) -> JSONResponse:
         try:
             agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
             extra = ["ai_draft_only", f"ai_{agent}"]
+            if matched and matched != "none":
+                extra.append("ai_hub_match")
             note_posted, note_error = post_internal_note(ticket_id, note_body, extra)
+            log.info("draft agent=%s matched=%s ticket_id=%s", agent, matched, ticket_id)
         except Exception:
             log.exception("zendesk note crashed ticket_id=%s", ticket_id)
             note_error = "internal error posting note"

@@ -1,10 +1,19 @@
 # Phase 1 Python service (Vercel)
 
-Zendesk webhook → match an approved **email** from `knowledge-hub/` → private internal note. No public reply. No AI model yet; the draft is the closest hub email.
+Step 5: on startup (and every 10 minutes) the service **downloads** `Success-Resources/zendesk-sr-ai-agents` from GitHub and reads `knowledge-hub/`. If GitHub is unreachable, it uses the bundled copy in `service/knowledge-hub`.
 
-- `GET /health` — `zendesk_configured` and `knowledge_hub_exists`
+The internal note is the **approved email** from the hub — the text staff should send to the customer. It is still `public: false`.
+
+- `GET /health` — includes `source` (`github:...` or `bundled`) and `entries`
 - `POST /zendesk/webhook`
 
-Vercel **Root Directory:** `service`. Knowledge is copied to `service/knowledge-hub` so the function can read it.
+Env vars (Redeploy after changing):
 
-Env vars (then Redeploy): `ZENDESK_SUBDOMAIN` (`srglobalhelp`), `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN`.
+| Name | Value |
+|---|---|
+| `ZENDESK_SUBDOMAIN` | `srglobalhelp` |
+| `ZENDESK_EMAIL` | Zendesk login email |
+| `ZENDESK_API_TOKEN` | API token |
+| `GITHUB_TOKEN` | Only if the repo is private |
+| `GITHUB_KNOWLEDGE_REPO` | default `Success-Resources/zendesk-sr-ai-agents` |
+| `GITHUB_KNOWLEDGE_BRANCH` | default `main` |
