@@ -1,43 +1,23 @@
-# Success Resources AI assistants (GitHub knowledge)
+# Success Resources AI assistants
 
-This folder is the GitHub home for Maya, Quinn and Rafa. Each assistant has its own knowledge base. You update the files here as tickets are corrected. The knowledge grows over time.
-
-The Quantum Leap assistant is named **Quinn** (not Queen).
+GitHub home for **Maya**, **Quinn**, and **Rafa**. Approved **email** answers live in the topic tree under [`knowledge-hub/`](knowledge-hub/README.md). The Quantum Leap assistant is named **Quinn** (not Queen).
 
 ```
 zendesk-sr-ai-agents/
-  knowledge-hub/      Topic folders (products, FAQs, policies, SOPs, …)
-  maya/knowledge/     MMI library (jsonl)
-  quinn/knowledge/    Quantum Leap library (jsonl)
-  rafa/knowledge/     Refunds, invoices, payments (drafts only)
-  service/            Phase 1 FastAPI draft service
+  knowledge-hub/   Email answers by product, FAQ, policy, SOP, escalation, troubleshooting
+  service/         Vercel FastAPI: Zendesk webhook → hub match → private note
 ```
 
-Browse answers by topic in [`knowledge-hub/`](knowledge-hub/README.md). That tree matches the Customer Service Knowledge Hub: Products & Programs (MMI, TTT, EWC, GBI, NWA, Quantum Leap), FAQs, Policies, SOPs, Response Guidelines, Escalation Rules, and Troubleshooting. Files are tagged `maya.md`, `quinn.md`, or `rafa.md`.
-
-## What lives in each knowledge folder
-
-| File | Purpose |
-|------|---------|
-| `responses.jsonl` | One approved question and answer per line. This is what the assistant will use. |
-| `responses.md` | Same content, easy to read. |
-| `corrections.jsonl` | Empty for now. Add a line here when a live ticket was wrong and you have better wording. |
-| `CHANGELOG.md` | Short log of what changed and when. |
+Each topic folder uses `maya.md`, `quinn.md`, or `rafa.md`. There are no separate `maya/`, `quinn/`, or `rafa/` library folders.
 
 ## How knowledge grows
 
-1. The reviewer finds a wrong reply in Zendesk.
-2. They write the better wording in the shared Google Sheet.
-3. On the Wednesday call you agree it.
-4. You add the answer to that assistant's `responses.jsonl` (and a line in `CHANGELOG.md`).
-5. Optionally copy the sheet row into `corrections.jsonl` so you have a history of what was fixed.
+1. Wrong draft in Zendesk → better wording in the corrections Sheet.
+2. Agree it on the Wednesday call.
+3. Update the matching file in `knowledge-hub/`.
 
-## Starting counts
+## Hard rules
 
-- Maya: 82 MMI answers
-- Quinn: 41 Quantum Leap answers
-- Rafa: 24 refund, payment, transfer and invoice drafts. Rafa never sends without a person.
-
-## Not in this step
-
-Connecting Zendesk, running the service, or publishing online. This step is only the folder and the knowledge.
+- Never invent prices. Never approve refunds.
+- Phase 1: internal note only. A person sends the public reply.
+- Rafa never auto-sends money decisions.

@@ -1,18 +1,10 @@
 # Phase 1 Python service (Vercel)
 
-Tiny FastAPI app for Vercel Hobby. Follow `automations/docs/zendesk-ai-phase1-architecture.html`.
+Zendesk webhook → match an approved **email** from `knowledge-hub/` → private internal note. No public reply. No AI model yet; the draft is the closest hub email.
 
-- `GET /health` — browser check. `zendesk_configured` is true when env vars are set.
-- `POST /zendesk/webhook` — Zendesk trigger calls this; the service posts a **private** internal note. No AI yet. The customer does not see the note.
+- `GET /health` — `zendesk_configured` and `knowledge_hub_exists`
+- `POST /zendesk/webhook`
 
-In the Vercel project, set **Root Directory** to `service`. Put secrets in Vercel Environment Variables, not in GitHub. Never commit `.env`.
+Vercel **Root Directory:** `service`. Knowledge is copied to `service/knowledge-hub` so the function can read it.
 
-Required env vars (Production, Preview, Development), then **Redeploy**:
-
-| Name | Value |
-|---|---|
-| `ZENDESK_SUBDOMAIN` | `srglobalhelp` (not `srglobalhelp.zendesk.com`) |
-| `ZENDESK_EMAIL` | Your Zendesk login email |
-| `ZENDESK_API_TOKEN` | API token from Admin Center |
-
-Optional: `ZENDESK_WEBHOOK_SECRET` after you turn on webhook signing.
+Env vars (then Redeploy): `ZENDESK_SUBDOMAIN` (`srglobalhelp`), `ZENDESK_EMAIL`, `ZENDESK_API_TOKEN`.

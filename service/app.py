@@ -18,11 +18,7 @@ log = logging.getLogger("zendesk_ai")
 
 app = FastAPI(title="SR Zendesk AI Phase 1")
 
-NOTE_BODY = (
-    "Phase 1 test. The service received this ticket. "
-    "This is an internal note only — the customer cannot see it. "
-    "No AI draft yet."
-)
+from knowledge import draft_note, hub_root
 
 
 def _zendesk_subdomain() -> str:
@@ -50,7 +46,7 @@ def _ticket_id(body: dict) -> str | None:
     return text or None
 
 
-def post_internal_note(ticket_id: str) -> tuple[bool, str]:
+def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None = None) -> tuple[bool, str]:
     subdomain = _zendesk_subdomain()
     email = (os.getenv("ZENDESK_EMAIL") or "").strip()
     token = (os.getenv("ZENDESK_API_TOKEN") or "").strip()
@@ -60,9 +56,10 @@ def post_internal_note(ticket_id: str) -> tuple[bool, str]:
     pair = f"{email}/token:{token}".encode("ascii")
     auth = base64.b64encode(pair).decode("ascii")
     url = f"https://{subdomain}.zendesk.com/api/v2/tickets/{ticket_id}.json"
-    payload = json.dumps(
-        {"ticket": {"comment": {"body": NOTE_BODY, "public": False}}}
-    ).encode("utf-8")
+    ticket: dict = {"comment": {"body": body, "public": False}}
+    if extra_tags:
+        ticket["additional_tags"] = extra_tags
+    payload = json.dumps({"ticket": ticket}).encode("utf-8")
     req = UrlRequest(
         url,
         data=payload,
@@ -100,7 +97,13 @@ def root() -> dict:
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "phase": 1, "zendesk_configured": _zendesk_configured()}
+    return {
+        "ok": True,
+        "phase": 1,
+        "zendesk_configured": _zendesk_configured(),
+        "knowledge_hub": str(hub_root()),
+        "knowledge_hub_exists": hub_root().is_dir(),
+    }
 
 
 @app.post("/zendesk/webhook")
@@ -112,15 +115,23 @@ async def zendesk_webhook(request: Request) -> JSONResponse:
 
     ticket = body.get("ticket") if isinstance(body.get("ticket"), dict) else {}
     ticket_id = _ticket_id(body)
-    subject = body.get("subject") or ticket.get("subject")
+    subject = body.get("subject") or ticket.get("subject") or ""
+    description = body.get("description") or ticket.get("description") or ""
+    tags = body.get("tags") or ticket.get("tags") or ""
+    if isinstance(tags, list):
+        tags = " ".join(str(t) for t in tags)
 
     log.info("webhook received ticket_id=%s subject=%s", ticket_id, subject)
 
     note_posted = False
     note_error = None
+    agent = None
+    matched = None
     if ticket_id:
         try:
-            note_posted, note_error = post_internal_note(ticket_id)
+            agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
+            extra = ["ai_draft_only", f"ai_{agent}"]
+            note_posted, note_error = post_internal_note(ticket_id, note_body, extra)
         except Exception:
             log.exception("zendesk note crashed ticket_id=%s", ticket_id)
             note_error = "internal error posting note"
@@ -131,6 +142,8 @@ async def zendesk_webhook(request: Request) -> JSONResponse:
         {
             "received": True,
             "ticket_id": ticket_id,
+            "agent": agent,
+            "matched": matched,
             "note_posted": note_posted,
             "note_error": None if note_posted else note_error,
         }
