@@ -288,6 +288,11 @@ def health() -> dict:
         "claude_key_set": bool((os.getenv("ANTHROPIC_API_KEY") or "").strip()),
         "claude_workspace_set": bool((os.getenv("ANTHROPIC_WORKSPACE_ID") or "").strip()),
         "zendesk_configured": _zendesk_configured(),
+        "ac_configured": bool(
+            (os.getenv("ACTIVECAMPAIGN_URL") or os.getenv("AC_API_URL") or "").strip()
+            and (os.getenv("ACTIVECAMPAIGN_API_TOKEN") or os.getenv("AC_API_TOKEN") or "").strip()
+        ),
+        "agent_actions": (os.getenv("AGENT_ACTIONS") or "propose").strip().lower(),
         **knowledge_status(),
     }
 

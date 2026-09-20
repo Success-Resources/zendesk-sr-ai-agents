@@ -9,7 +9,7 @@ from pathlib import Path
 
 from agents import guardrails, llm
 from agents.tools import TOOL_DOCS, run as run_tool
-from agents.tools import events, hub, links, sheets
+from agents.tools import activecampaign, events, hub, links, sheets
 
 _PERSONAS = Path(__file__).resolve().parent / "personas"
 _MAX_STEPS = 6
@@ -27,6 +27,11 @@ _LINKS = re.compile(
 )
 _PRICE = re.compile(r"\b(price|cost|how much|ticket type|vip|fee|€995|995)\b", re.I)
 _FOOD = re.compile(r"\b(food|accommodation|hotel|flights?|f&a|board|meal)\b", re.I)
+_CONFIRM = re.compile(
+    r"\b(confirmation email|e-?ticket|didn'?t receive|have not received|"
+    r"not received (my )?(ticket|email|confirmation))\b",
+    re.I,
+)
 
 
 @dataclass
@@ -92,6 +97,11 @@ def _prefetch(
         blocks.append(links.lookup_links(ticket))
         used.append("lookup_links")
 
+    if agent == "maya" and _CONFIRM.search(ticket):
+        ac_query = " ".join(part for part in (requester_email, ticket) if part).strip()
+        blocks.append(activecampaign.ac_fix_confirmation(ac_query, agent))
+        used.append("ac_fix_confirmation")
+
     if _REGISTERED.search(ticket):
         query = " ".join(part for part in (requester_email, requester_name, ticket) if part).strip()
         blocks.append(sheets.lookup_registration(query))
@@ -135,6 +145,8 @@ def run_agent(
         "If they asked for a fact sheet: ask which city if missing, then send only the matching "
         "sr-event.com factsheet from APPROVED MMI LINKS. "
         "Facebook and WhatsApp groups: ask city/country if missing, then send only the listed group. "
+        "If they did not receive a confirmation email, use the ActiveCampaign result. "
+        "Do not claim an email was resent unless MODE=execute OK. "
         "Prices only from lookup_sheet. If a date or price is missing, say a person will check "
         "and set needs_human true. Do not invent. JSON only."
     )

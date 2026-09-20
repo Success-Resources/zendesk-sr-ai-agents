@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from agents.tools import docs, events, hub, links, sheets, web
+from agents.tools import activecampaign, docs, events, hub, links, sheets, web
 
 TOOLS = {
     "search_hub": hub.search_hub,
     "lookup_sheet": sheets.lookup_sheet,
     "lookup_registration": sheets.lookup_registration,
     "lookup_links": links.lookup_links,
+    "lookup_ac": activecampaign.lookup_ac,
+    "ac_fix_confirmation": activecampaign.ac_fix_confirmation,
     "lookup_doc": docs.lookup_doc,
     "list_events": events.list_events,
     "search_site": web.search_site,
@@ -47,7 +49,16 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
    action_input: the customer question
    Approved emails and policies from GitHub.
 
-8. lookup_doc
+8. lookup_ac
+   action_input: the customer email
+   Read-only ActiveCampaign contact and tags. Maya uses this when they did not get a confirmation email or e-ticket.
+
+9. ac_fix_confirmation
+   action_input: the customer email
+   Maya only. If the MMI tag is on the contact, resend confirmation. If not, start the MMI automation.
+   Default mode is propose (writes the plan in the note). execute only when AGENT_ACTIONS=execute.
+
+10. lookup_doc
    action_input: a short phrase
    Google Docs listed in GOOGLE_DOC_IDS only.
 
@@ -71,6 +82,8 @@ def run(name: str, action_input: str, agent: str) -> str:
     if name == "lookup_sheet":
         prefer = {"maya": "mmi", "quinn": "ql", "rafa": "rafa"}.get(agent, "")
         return fn(action_input, prefer)
+    if name == "ac_fix_confirmation":
+        return fn(action_input, agent)
     return fn(action_input)
 
 
