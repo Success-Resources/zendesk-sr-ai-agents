@@ -7,6 +7,8 @@ The internal note is the **approved email** from the hub — the text staff shou
 - `GET /health` — includes `source` (`github:...` or `bundled`) and `entries`
 - `POST /zendesk/webhook`
 
+On this PC, set `AGENT_BACKEND=ollama` so Maya/Quinn/Rafa **write** the note with Llama 3.1 (hub + SR websites + Sheets). Vercel should stay `matcher`. Click-path: `automations/docs/zendesk-ai-ollama-in-the-pipeline.html`.
+
 Env vars (Redeploy after changing):
 
 | Name | Value |
