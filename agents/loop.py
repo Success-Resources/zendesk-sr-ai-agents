@@ -9,13 +9,20 @@ from pathlib import Path
 
 from agents import guardrails, llm
 from agents.tools import TOOL_DOCS, run as run_tool
-from agents.tools import events, hub, sheets
+from agents.tools import events, hub, links, sheets
 
 _PERSONAS = Path(__file__).resolve().parent / "personas"
 _MAX_STEPS = 6
 _REGISTERED = re.compile(
-    r"\b(regist|confirmation email|am i booked|did i (get|register)|"
-    r"on the list|my ticket|booked me|have i got)\b",
+    r"\b(confirmation email|am i booked|did i (get|register)|"
+    r"on the list|already registered|registration not found|"
+    r"have i got|booked me)\b",
+    re.I,
+)
+_LINKS = re.compile(
+    r"\b(fact\s*sheet|factsheet|facebook|fb group|whats?app|wa group|"
+    r"registration link|sign[- ]?up|how (do i|can i) register|"
+    r"where (do i|can i) register|link to register)\b",
     re.I,
 )
 _PRICE = re.compile(r"\b(price|cost|how much|ticket type|vip|fee|€995|995)\b", re.I)
@@ -81,6 +88,10 @@ def _prefetch(
             blocks.append(events.fetch_city(city))
             used.append("fetch_url")
 
+    if agent == "maya" and _LINKS.search(ticket):
+        blocks.append(links.lookup_links(ticket))
+        used.append("lookup_links")
+
     if _REGISTERED.search(ticket):
         query = " ".join(part for part in (requester_email, requester_name, ticket) if part).strip()
         blocks.append(sheets.lookup_registration(query))
@@ -119,6 +130,11 @@ def run_agent(
         "If LIVE EVENTS / the sheet lists dates, include them. "
         "Food and accommodation: QL tuition does not include them unless the hub or sheet says so "
         "for that event (EWC F&A is separate). "
+        "If they asked for a registration link: ask which country they want to attend if it is "
+        "not in the ticket, then send https://millionairemind.live/ — that is the official MMI site. "
+        "If they asked for a fact sheet: ask which city if missing, then send only the matching "
+        "sr-event.com factsheet from APPROVED MMI LINKS. "
+        "Facebook and WhatsApp groups: ask city/country if missing, then send only the listed group. "
         "Prices only from lookup_sheet. If a date or price is missing, say a person will check "
         "and set needs_human true. Do not invent. JSON only."
     )

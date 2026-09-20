@@ -323,6 +323,54 @@ Best regards,
 
 ---
 
+## 3.20 — Can I have the fact sheet?
+
+**Agent:** Maya  
+**Category:** Event Logistics  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for your message.
+
+Please tell us which city you will attend and we will send the official fact sheet for that event.
+
+Kind regards,
+
+---
+
+## 3.21 — What is the Facebook group?
+
+**Agent:** Maya  
+**Category:** Event Logistics  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for your message.
+
+Please tell us which city or country you will attend and we will send the correct MMI Facebook group for that country.
+
+Kind regards,
+
+---
+
+## 3.22 — What is the WhatsApp group?
+
+**Agent:** Maya  
+**Category:** Event Logistics  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for your message.
+
+Please tell us which country you would like the WhatsApp group for and we will send the correct invite link.
+
+Kind regards,
+
+---
+
 ## 6.3 — How does Priority Check-In work?
 
 **Agent:** Maya  

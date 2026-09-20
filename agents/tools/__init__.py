@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from agents.tools import docs, events, hub, sheets, web
+from agents.tools import docs, events, hub, links, sheets, web
 
 TOOLS = {
     "search_hub": hub.search_hub,
     "lookup_sheet": sheets.lookup_sheet,
     "lookup_registration": sheets.lookup_registration,
+    "lookup_links": links.lookup_links,
     "lookup_doc": docs.lookup_doc,
     "list_events": events.list_events,
     "search_site": web.search_site,
@@ -37,11 +38,16 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
    action_input: customer email and name
    Only confirm a booking if their email is in a matching row. Otherwise ask for the purchase email and set needs_human true.
 
-6. search_hub
+6. lookup_links
+   action_input: the ticket text (city/country if they named one)
+   MMI registration (millionairemind.live), city factsheets (sr-event.com), Facebook groups, WhatsApp groups.
+   If the city/country is missing, ask for it. Do not invent a group or factsheet URL.
+
+7. search_hub
    action_input: the customer question
    Approved emails and policies from GitHub.
 
-7. lookup_doc
+8. lookup_doc
    action_input: a short phrase
    Google Docs listed in GOOGLE_DOC_IDS only.
 

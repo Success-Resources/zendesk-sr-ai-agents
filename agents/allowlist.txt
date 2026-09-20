@@ -6,3 +6,5 @@ successresources.com
 www.successresources.com
 store.successresources.com
 sr-event.typeform.com
+sr-event.com
+www.sr-event.com

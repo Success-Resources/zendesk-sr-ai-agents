@@ -35,7 +35,9 @@ Hello,
 
 Thank you for your interest. Registration can be completed online through our website. Simply select your preferred event and follow the registration process provided.
 
-You can view upcoming events and register at https://www.millionairemind.live/
+You can view upcoming events and register at https://millionairemind.live/
+
+If you have not yet chosen a country, reply with the country you would like to attend and we will point you to the official MMI website: https://millionairemind.live/
 
 Kind regards,
 
@@ -151,11 +153,11 @@ Hello,
 
 Thank you for your message.
 
-The link to the Private Facebook Community is included in your confirmation email.
+Please tell us which city or country you will attend and we will send the correct Private Facebook Community link for that country.
 
-If you can't find it, please reply with the email address you used to register, and we'll be happy to resend the Facebook group link to you.
+If you already know your city, we can send the group now.
 
-Best regards,
+Kind regards,
 
 ---
 
