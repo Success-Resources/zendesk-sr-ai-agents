@@ -24,6 +24,9 @@ def _sheets() -> dict[str, str]:
     extra = (os.getenv("GOOGLE_SHEET_ALLOCATION") or "").strip()
     if extra:
         out["allocation"] = extra
+    registrations = (os.getenv("GOOGLE_SHEET_REGISTRATIONS") or "").strip()
+    if registrations:
+        out["registrations"] = registrations
     return {k: v for k, v in out.items() if v}
 
 
@@ -84,4 +87,29 @@ def lookup_sheet(query: str) -> str:
         f"no_row: {hint}. Query was: {q or '(empty)'}. "
         "Share the Sheet as Viewer to anyone with the link, or Publish to web, "
         "then retry. Do not invent a price, date, or venue."
+    )
+
+
+def lookup_registration(query: str) -> str:
+    """Look up a customer email/name. Never confirm registration on a miss."""
+    q = (query or "").strip()
+    emails = re.findall(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}", q, flags=re.I)
+    result = lookup_sheet(q)
+    blob = result.lower()
+    if result.startswith("no_row") or not q:
+        return (
+            "registration_not_found: no sheet row matched. "
+            "Do not tell the customer they are registered. "
+            "Ask for the purchase email and event city/date. Set needs_human true. "
+            f"Query was: {q or '(empty)'}."
+        )
+    if emails and not any(e.lower() in blob for e in emails):
+        return (
+            "registration_not_found: sheet rows came back but none contain this email. "
+            "Do not confirm registration. Ask a person to check. "
+            f"Email tried: {emails[0]}."
+        )
+    return (
+        "registration_possible_match (a person must still confirm before you tell the "
+        "customer they are booked):\n" + result
     )

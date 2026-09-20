@@ -21,6 +21,7 @@ def main() -> int:
     parser.add_argument("--tags", default="")
     parser.add_argument("--subject", default="Customer question")
     parser.add_argument("--body", default="", help="Customer message")
+    parser.add_argument("--email", default="", help="Customer email for registration lookup")
     parser.add_argument("text", nargs="*", help="Customer message if --body is omitted")
     args = parser.parse_args()
     body = args.body or " ".join(args.text)
@@ -35,7 +36,7 @@ def main() -> int:
         agent = route_agent(args.tags, args.subject, body)
 
     try:
-        result = run_agent(agent, args.subject, body, args.tags)
+        result = run_agent(agent, args.subject, body, args.tags, requester_email=args.email)
     except ModelNotAvailable as exc:
         print(exc, file=sys.stderr)
         return 2

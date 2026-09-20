@@ -195,7 +195,13 @@ def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None =
         return False, "zendesk connection error"
 
 
-def _build_draft(tags: str, subject: str, description: str, requester_name: str) -> tuple[str, str, list[str], str]:
+def _build_draft(
+    tags: str,
+    subject: str,
+    description: str,
+    requester_name: str,
+    requester_email: str = "",
+) -> tuple[str, str, list[str], str]:
     extra: list[str] = []
     if _backend() in {"ollama", "claude"}:
         try:
@@ -208,6 +214,7 @@ def _build_draft(tags: str, subject: str, description: str, requester_name: str)
                 str(description),
                 str(tags),
                 str(requester_name),
+                str(requester_email),
             )
             note_body, extra, matched = _compose_generated_note(result)
             return agent, matched, extra, note_body
@@ -231,13 +238,16 @@ def _draft_and_post(
     description: str,
     tags: str,
     requester_name: str,
+    requester_email: str = "",
 ) -> None:
     try:
         live_tags = fetch_ticket_tags(ticket_id)
         if _already_drafted(tags) or _already_drafted(live_tags):
             log.info("skip already drafted ticket_id=%s", ticket_id)
             return
-        agent, matched, extra, note_body = _build_draft(tags, subject, description, requester_name)
+        agent, matched, extra, note_body = _build_draft(
+            tags, subject, description, requester_name, requester_email
+        )
         posted, error = post_internal_note(ticket_id, note_body, extra)
         log.info(
             "draft backend=%s agent=%s matched=%s ticket_id=%s posted=%s error=%s",
@@ -298,6 +308,12 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
         or (ticket.get("requester") or {}).get("name")
         or ""
     )
+    requester_email = (
+        body.get("requester_email")
+        or (ticket.get("requester") or {}).get("email")
+        or body.get("email")
+        or ""
+    )
     tags = body.get("tags") or ticket.get("tags") or ""
     if isinstance(tags, list):
         tags = " ".join(str(t) for t in tags)
@@ -344,6 +360,7 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
         str(description),
         str(tags),
         str(requester_name),
+        str(requester_email),
     )
     return JSONResponse(
         {
