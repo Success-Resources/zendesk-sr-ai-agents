@@ -26,11 +26,7 @@ def check(email: str, tools_used: list[str], agent: str) -> tuple[str, bool, str
             "refund language blocked",
         )
     if _PRICE.search(text) and "lookup_sheet" not in tools_used:
-        return (
-            "A person must confirm the figure. The draft contained a price but the Allocation Sheet was not used.",
-            True,
-            "ungrounded price blocked",
-        )
+        return text, True, "ungrounded price blocked"
     if not text.strip():
         return text, True, "empty email"
     return text, False, "ok"

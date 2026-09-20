@@ -12,13 +12,14 @@ import json
 import logging
 import os
 import sys
+import threading
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
 from knowledge import draft_note, ensure_hub, knowledge_status, route_agent
 
@@ -32,6 +33,12 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("zendesk_ai")
 
 app = FastAPI(title="SR Zendesk AI")
+
+# One Claude run per ticket. Zendesk retries the webhook when Claude is slow;
+# without this lock each retry bills again and posts another note.
+_draft_lock = threading.Lock()
+_claimed_tickets: set[str] = set()
+_AI_DRAFT_TAGS = frozenset({"ai_draft_only", "ai_generated", "ai_matcher_fallback"})
 
 
 @app.on_event("startup")
@@ -90,6 +97,16 @@ def _zendesk_configured() -> bool:
     )
 
 
+def _zendesk_auth_header() -> tuple[str, str] | None:
+    subdomain = _zendesk_subdomain()
+    email = (os.getenv("ZENDESK_EMAIL") or "").strip()
+    token = (os.getenv("ZENDESK_API_TOKEN") or "").strip()
+    if not (subdomain and email and token):
+        return None
+    pair = f"{email}/token:{token}".encode("ascii")
+    return subdomain, "Basic " + base64.b64encode(pair).decode("ascii")
+
+
 def _ticket_id(body: dict) -> str | None:
     ticket = body.get("ticket") if isinstance(body.get("ticket"), dict) else {}
     raw = body.get("id") or body.get("ticket_id") or ticket.get("id")
@@ -99,15 +116,56 @@ def _ticket_id(body: dict) -> str | None:
     return text or None
 
 
+def _tag_set(tags) -> set[str]:
+    if isinstance(tags, list):
+        parts = tags
+    else:
+        parts = str(tags or "").replace(",", " ").split()
+    return {str(p).strip().lower() for p in parts if str(p).strip()}
+
+
+def _already_drafted(tags) -> bool:
+    return bool(_tag_set(tags) & _AI_DRAFT_TAGS)
+
+
+def _claim_ticket(ticket_id: str) -> bool:
+    with _draft_lock:
+        if ticket_id in _claimed_tickets:
+            return False
+        _claimed_tickets.add(ticket_id)
+        return True
+
+
+def _release_ticket(ticket_id: str) -> None:
+    with _draft_lock:
+        _claimed_tickets.discard(ticket_id)
+
+
+def fetch_ticket_tags(ticket_id: str) -> list[str]:
+    creds = _zendesk_auth_header()
+    if not creds:
+        return []
+    subdomain, auth = creds
+    req = UrlRequest(
+        f"https://{subdomain}.zendesk.com/api/v2/tickets/{ticket_id}.json",
+        method="GET",
+        headers={"Authorization": auth, "Accept": "application/json"},
+    )
+    try:
+        with urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return [str(t) for t in (data.get("ticket") or {}).get("tags") or []]
+    except Exception:
+        log.exception("zendesk tags fetch failed ticket_id=%s", ticket_id)
+        return []
+
+
 def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None = None) -> tuple[bool, str]:
-    subdomain = _zendesk_subdomain()
-    email = (os.getenv("ZENDESK_EMAIL") or "").strip()
-    token = (os.getenv("ZENDESK_API_TOKEN") or "").strip()
-    if not (subdomain and email and token):
+    creds = _zendesk_auth_header()
+    if not creds:
         return False, "missing ZENDESK_SUBDOMAIN, ZENDESK_EMAIL, or ZENDESK_API_TOKEN"
 
-    pair = f"{email}/token:{token}".encode("ascii")
-    auth = base64.b64encode(pair).decode("ascii")
+    subdomain, auth = creds
     url = f"https://{subdomain}.zendesk.com/api/v2/tickets/{ticket_id}.json"
     ticket: dict = {"comment": {"body": body, "public": False}}
     if extra_tags:
@@ -118,7 +176,7 @@ def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None =
         data=payload,
         method="PUT",
         headers={
-            "Authorization": f"Basic {auth}",
+            "Authorization": auth,
             "Content-Type": "application/json",
             "Accept": "application/json",
         },
@@ -135,6 +193,66 @@ def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None =
     except URLError as exc:
         log.error("zendesk note failed ticket_id=%s error=%s", ticket_id, exc)
         return False, "zendesk connection error"
+
+
+def _build_draft(tags: str, subject: str, description: str, requester_name: str) -> tuple[str, str, list[str], str]:
+    extra: list[str] = []
+    if _backend() in {"ollama", "claude"}:
+        try:
+            from agents.loop import run_agent
+
+            agent = route_agent(str(tags), str(subject), str(description))
+            result = run_agent(
+                agent,
+                str(subject),
+                str(description),
+                str(tags),
+                str(requester_name),
+            )
+            note_body, extra, matched = _compose_generated_note(result)
+            return agent, matched, extra, note_body
+        except Exception:
+            log.exception("agent generate failed; falling back to GitHub matcher")
+            agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
+            extra = ["ai_draft_only", f"ai_{agent}", "ai_matcher_fallback"]
+            if matched and matched != "none":
+                extra.append("ai_hub_match")
+            return agent, matched, extra, note_body
+    agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
+    extra = ["ai_draft_only", f"ai_{agent}"]
+    if matched and matched != "none":
+        extra.append("ai_hub_match")
+    return agent, matched, extra, note_body
+
+
+def _draft_and_post(
+    ticket_id: str,
+    subject: str,
+    description: str,
+    tags: str,
+    requester_name: str,
+) -> None:
+    try:
+        live_tags = fetch_ticket_tags(ticket_id)
+        if _already_drafted(tags) or _already_drafted(live_tags):
+            log.info("skip already drafted ticket_id=%s", ticket_id)
+            return
+        agent, matched, extra, note_body = _build_draft(tags, subject, description, requester_name)
+        posted, error = post_internal_note(ticket_id, note_body, extra)
+        log.info(
+            "draft backend=%s agent=%s matched=%s ticket_id=%s posted=%s error=%s",
+            _backend(),
+            agent,
+            matched,
+            ticket_id,
+            posted,
+            error,
+        )
+        if not posted:
+            _release_ticket(ticket_id)
+    except Exception:
+        log.exception("zendesk note crashed ticket_id=%s", ticket_id)
+        _release_ticket(ticket_id)
 
 
 @app.get("/")
@@ -165,7 +283,7 @@ def health() -> dict:
 
 
 @app.post("/zendesk/webhook")
-async def zendesk_webhook(request: Request) -> JSONResponse:
+async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -> JSONResponse:
     try:
         body = await request.json()
     except Exception:
@@ -186,58 +304,53 @@ async def zendesk_webhook(request: Request) -> JSONResponse:
 
     log.info("webhook received ticket_id=%s subject=%s", ticket_id, subject)
 
-    note_posted = False
-    note_error = None
-    agent = None
-    matched = None
-    if ticket_id:
-        try:
-            extra: list[str] = []
-            if _backend() in {"ollama", "claude"}:
-                try:
-                    from agents.loop import run_agent
+    if not ticket_id:
+        return JSONResponse(
+            {
+                "received": True,
+                "ticket_id": None,
+                "skipped": "no ticket id in payload",
+                "note_posted": False,
+            }
+        )
 
-                    agent = route_agent(str(tags), str(subject), str(description))
-                    result = run_agent(
-                        agent,
-                        str(subject),
-                        str(description),
-                        str(tags),
-                        str(requester_name),
-                    )
-                    note_body, extra, matched = _compose_generated_note(result)
-                except Exception:
-                    log.exception("agent generate failed; falling back to GitHub matcher")
-                    agent, matched, note_body = draft_note(
-                        str(tags), str(subject), str(description)
-                    )
-                    extra = ["ai_draft_only", f"ai_{agent}", "ai_matcher_fallback"]
-                    if matched and matched != "none":
-                        extra.append("ai_hub_match")
-            else:
-                agent, matched, note_body = draft_note(
-                    str(tags), str(subject), str(description)
-                )
-                extra = ["ai_draft_only", f"ai_{agent}"]
-                if matched and matched != "none":
-                    extra.append("ai_hub_match")
-            note_posted, note_error = post_internal_note(ticket_id, note_body, extra)
-            log.info("draft backend=%s agent=%s matched=%s ticket_id=%s", _backend(), agent, matched, ticket_id)
-        except Exception:
-            log.exception("zendesk note crashed ticket_id=%s", ticket_id)
-            note_error = "internal error posting note"
-    else:
-        note_error = "no ticket id in payload"
+    if _already_drafted(tags):
+        log.info("skip webhook already drafted ticket_id=%s", ticket_id)
+        return JSONResponse(
+            {
+                "received": True,
+                "ticket_id": ticket_id,
+                "skipped": "already drafted",
+                "note_posted": False,
+            }
+        )
 
+    if not _claim_ticket(ticket_id):
+        log.info("skip webhook duplicate in-flight ticket_id=%s", ticket_id)
+        return JSONResponse(
+            {
+                "received": True,
+                "ticket_id": ticket_id,
+                "skipped": "already processing",
+                "note_posted": False,
+            }
+        )
+
+    # Ack Zendesk immediately so it does not retry while Claude is still running.
+    background_tasks.add_task(
+        _draft_and_post,
+        ticket_id,
+        str(subject),
+        str(description),
+        str(tags),
+        str(requester_name),
+    )
     return JSONResponse(
         {
             "received": True,
+            "accepted": True,
             "ticket_id": ticket_id,
-            "agent": agent,
-            "matched": matched,
             "backend": _backend(),
-            "note_posted": note_posted,
-            "note_error": None if note_posted else note_error,
         }
     )
 

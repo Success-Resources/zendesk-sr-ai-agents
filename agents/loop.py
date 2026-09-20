@@ -73,12 +73,19 @@ def run_agent(
     trace: list[str] = []
 
     for step in range(_MAX_STEPS):
+        if step == _MAX_STEPS - 1:
+            messages.append(
+                {
+                    "role": "user",
+                    "content": "No more tools. action must be final. Write the customer email now. JSON only.",
+                }
+            )
         raw = llm.complete(messages)
         data = _parse(raw)
         action = str(data.get("action") or "final").strip()
         thought = str(data.get("thought") or "")
         trace.append(f"step {step + 1}: {action} {thought[:120]}")
-        if action != "final":
+        if action != "final" and step < _MAX_STEPS - 1:
             observation = run_tool(action, str(data.get("action_input") or ""), agent)
             tools_used.append(action)
             messages.append({"role": "assistant", "content": raw})
