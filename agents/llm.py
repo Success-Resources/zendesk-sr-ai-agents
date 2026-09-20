@@ -50,22 +50,33 @@ def _complete_claude(messages: list[dict]) -> str:
     if not payload["system"]:
         payload.pop("system")
 
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+    }
+    workspace = (os.getenv("ANTHROPIC_WORKSPACE_ID") or "").strip()
+    if workspace:
+        headers["anthropic-workspace-id"] = workspace
+
     req = Request(
         "https://api.anthropic.com/v1/messages",
         data=json.dumps(payload).encode("utf-8"),
         method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": key,
-            "anthropic-version": "2023-06-01",
-        },
+        headers=headers,
     )
     try:
         with urlopen(req, timeout=90) as resp:
             data = json.loads(resp.read().decode("utf-8"))
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:800]
-        raise ModelNotAvailable(f"Claude API HTTP {exc.code}: {detail}") from exc
+        hint = ""
+        if "workspace" in detail.lower() and not workspace:
+            hint = (
+                " Add ANTHROPIC_WORKSPACE_ID on Render (Claude Console → Settings → "
+                "Workspaces → copy the wrkspc_… ID) and Redeploy."
+            )
+        raise ModelNotAvailable(f"Claude API HTTP {exc.code}: {detail}{hint}") from exc
     except URLError as exc:
         raise ModelNotAvailable(f"Claude API connection error: {exc.reason}") from exc
 

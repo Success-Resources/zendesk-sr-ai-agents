@@ -158,6 +158,7 @@ def health() -> dict:
         "ollama_model": os.getenv("OLLAMA_MODEL") or "llama3.1",
         "anthropic_model": os.getenv("ANTHROPIC_MODEL") or "claude-sonnet-5",
         "claude_key_set": bool((os.getenv("ANTHROPIC_API_KEY") or "").strip()),
+        "claude_workspace_set": bool((os.getenv("ANTHROPIC_WORKSPACE_ID") or "").strip()),
         "zendesk_configured": _zendesk_configured(),
         **knowledge_status(),
     }
