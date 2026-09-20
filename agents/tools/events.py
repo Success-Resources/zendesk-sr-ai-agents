@@ -49,6 +49,18 @@ _HOMES = (
     "https://www.millionairemind.live/",
     "https://www.millionairemind.live/europe/ql-redemption",
 )
+_QL_HOMES = (
+    "https://www.millionairemind.live/europe/ql-redemption",
+    "https://www.srglobal.com/events",
+)
+_PROGRAMS = (
+    ("nwa", r"\b(nwa|never work again)\b", "Never Work Again NWA date city venue"),
+    ("ewc", r"\b(ewc|ewtc|enlightened warrior)\b", "Enlightened Warrior Camp EWC date city food accommodation"),
+    ("gbi", r"\b(gbi|guerrilla)\b", "Guerrilla Business Intensive GBI date city venue"),
+    ("ttt", r"\b(ttt|train the trainer)\b", "Train the Trainer TTT date city venue"),
+    ("ql", r"\b(quantum leap|\bql\b)\b", "Quantum Leap QL programme date city"),
+    ("mmi", r"\b(mmi|millionaire mind)\b", "Millionaire Mind Intensive MMI date city venue"),
+)
 _TTL = 1800.0
 _lock = Lock()
 _cache: dict = {"at": 0.0, "pages": []}
@@ -196,8 +208,66 @@ def fetch_city(city: str) -> str:
     )
 
 
+def detect_program(text: str, agent: str = "maya") -> str:
+    blob = (text or "").lower()
+    for name, pattern, _query in _PROGRAMS:
+        if re.search(pattern, blob):
+            return name
+    if (agent or "").lower() in {"quinn", "rafa"}:
+        return "ql"
+    return "mmi"
+
+
+def _program_query(program: str, text: str) -> str:
+    for name, _pattern, query in _PROGRAMS:
+        if name == program:
+            return f"{query} {text}".strip()
+    return text
+
+
 def list_events(query: str = "", agent: str = "maya") -> str:
-    """Structured upcoming dates from the official MMI site."""
+    """Upcoming dates: MMI from millionairemind.live, QL programmes from the QL Sheet + SR pages."""
+    program = detect_program(query, agent)
+    if program == "mmi":
+        return _list_mmi(query, agent)
+    return _list_ql(query, agent, program)
+
+
+def _list_ql(query: str, agent: str, program: str) -> str:
+    from agents.tools import sheets
+
+    label = {
+        "nwa": "Never Work Again",
+        "ewc": "Enlightened Warrior Camp",
+        "gbi": "Guerrilla Business Intensive",
+        "ttt": "Train the Trainer",
+        "ql": "Quantum Leap programmes",
+    }.get(program, program)
+    sheet = sheets.lookup_sheet(_program_query(program, query), prefer="ql")
+    site_bits: list[str] = []
+    for url in _QL_HOMES:
+        try:
+            text, _links = web.fetch_page(url)
+        except Exception:
+            continue
+        if len(text) >= 40:
+            site_bits.append(f"URL: {url}\n{text[:1500]}")
+    lines = [
+        f"LIVE {label} FACTS. Do not use Millionaire Mind Intensive dates for this answer.",
+        "Dates and cities only from the QL Sheet or these pages. If missing, set needs_human true.",
+        "Prices only from the sheet. Food, accommodation and flights: use hub policy unless the sheet has an event-specific F&A amount.",
+        "",
+        "QL SHEET:",
+        sheet,
+    ]
+    if site_bits:
+        lines.append("\nQL / SR PAGES:\n" + "\n\n".join(site_bits))
+    else:
+        lines.append("No extra QL page text. Rely on the sheet and the hub.")
+    return "\n".join(lines)
+
+
+def _list_mmi(query: str, agent: str) -> str:
     pages = _load_homes()
     if not pages:
         return (

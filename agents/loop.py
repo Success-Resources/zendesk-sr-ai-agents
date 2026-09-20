@@ -18,7 +18,8 @@ _REGISTERED = re.compile(
     r"on the list|my ticket|booked me|have i got)\b",
     re.I,
 )
-_PRICE = re.compile(r"\b(price|cost|how much|ticket type|vip|fee)\b", re.I)
+_PRICE = re.compile(r"\b(price|cost|how much|ticket type|vip|fee|€995|995)\b", re.I)
+_FOOD = re.compile(r"\b(food|accommodation|hotel|flights?|f&a|board|meal)\b", re.I)
 
 
 @dataclass
@@ -68,20 +69,24 @@ def _prefetch(
     blocks.append(hub.search_hub(ticket, agent))
     used.append("search_hub")
 
+    program = events.detect_program(ticket, agent)
     blocks.append(events.list_events(ticket, agent))
     used.append("list_events")
+    if program != "mmi":
+        used.append("lookup_sheet")
 
-    city = events.mentioned_city(ticket)
-    if city:
-        blocks.append(events.fetch_city(city))
-        used.append("fetch_url")
+    if program == "mmi":
+        city = events.mentioned_city(ticket)
+        if city:
+            blocks.append(events.fetch_city(city))
+            used.append("fetch_url")
 
     if _REGISTERED.search(ticket):
         query = " ".join(part for part in (requester_email, requester_name, ticket) if part).strip()
         blocks.append(sheets.lookup_registration(query))
         used.append("lookup_registration")
-    elif _PRICE.search(ticket) or city:
-        blocks.append(sheets.lookup_sheet(city or ticket))
+    elif program == "mmi" and (_PRICE.search(ticket) or _FOOD.search(ticket) or events.mentioned_city(ticket)):
+        blocks.append(sheets.lookup_sheet(ticket, prefer="mmi"))
         used.append("lookup_sheet")
 
     return "\n\n---\n\n".join(blocks), used
@@ -108,11 +113,14 @@ def run_agent(
         f"Message:\n{description}\n\n"
         "LIVE FACTS already retrieved from GitHub, Success Resources websites, and Sheets:\n"
         f"{live}\n\n"
-        "Write a new email for this person using those facts. If LIVE EVENTS lists dates, "
-        "include the relevant upcoming dates in the email — do not say a person must confirm "
-        "a date that is already listed. If they asked whether they are registered, only confirm "
-        "when lookup_registration shows their email; otherwise ask for the purchase email and "
-        "set needs_human true. Call another tool only if a needed fact is still missing. JSON only."
+        "Write a new email for this person using those facts. "
+        "If they asked about Never Work Again, EWC, GBI, TTT or Quantum Leap, use the QL Sheet "
+        "and hub policy — never Millionaire Mind Intensive dates. "
+        "If LIVE EVENTS / the sheet lists dates, include them. "
+        "Food and accommodation: QL tuition does not include them unless the hub or sheet says so "
+        "for that event (EWC F&A is separate). "
+        "Prices only from lookup_sheet. If a date or price is missing, say a person will check "
+        "and set needs_human true. Do not invent. JSON only."
     )
     messages = [
         {"role": "system", "content": system},

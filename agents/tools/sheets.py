@@ -48,12 +48,40 @@ def _download_csv(sheet_id: str) -> str:
     raise RuntimeError(last or "download failed")
 
 
-def lookup_sheet(query: str) -> str:
+_EXPAND = (
+    (r"\bnwa\b", "never work again nwa"),
+    (r"\bewtc\b|\bewc\b", "enlightened warrior camp ewc"),
+    (r"\bgbi\b", "guerrilla business intensive gbi"),
+    (r"\bttt\b", "train the trainer ttt"),
+    (r"\bql\b", "quantum leap ql"),
+    (r"\bmmi\b", "millionaire mind intensive mmi"),
+    (r"\bf&a\b|\bf and a\b", "food accommodation"),
+)
+
+
+def _query_words(query: str) -> set[str]:
+    blob = (query or "").strip()
+    for pattern, extra in _EXPAND:
+        if re.search(pattern, blob, re.I):
+            blob += " " + extra
+    return {w.lower() for w in re.findall(r"[a-zA-Z0-9]{3,}", blob)}
+
+
+def lookup_sheet(query: str, prefer: str = "") -> str:
     q = (query or "").strip()
-    words = {w.lower() for w in re.findall(r"[a-zA-Z0-9]{3,}", q)}
+    words = _query_words(q)
     blocks: list[str] = []
     failures: list[str] = []
-    for name, sheet_id in _sheets().items():
+    mapping = _sheets()
+    names = list(mapping)
+    if prefer and prefer in mapping:
+        names = [prefer] + [n for n in names if n != prefer]
+        # Calendar lookups must not mix MMI cities into a QL answer.
+        if prefer in {"ql", "mmi", "rafa"}:
+            names = [prefer]
+    limit = 10 if prefer else 5
+    for name in names:
+        sheet_id = mapping[name]
         try:
             raw = _download_csv(sheet_id)
         except Exception as exc:
@@ -72,9 +100,9 @@ def lookup_sheet(query: str) -> str:
             score = sum(1 for w in words if w in blob) if words else 0
             scored.append((score, line))
         scored.sort(key=lambda item: item[0], reverse=True)
-        picked = [line for score, line in scored[:5] if (not words or score > 0)]
+        picked = [line for score, line in scored[:limit] if (not words or score > 0)]
         if not picked and not words:
-            picked = [line for _, line in scored[:5]]
+            picked = [line for _, line in scored[:limit]]
         if picked:
             cols = " | ".join(header[:12])
             blocks.append(

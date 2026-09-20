@@ -18,20 +18,20 @@ TOOL_DOCS = """
 You have these tools. Use LIVE FACTS already in the user message first. Call extra tools only if a fact is still missing.
 
 1. list_events
-   action_input: city or "upcoming MMI"
-   Upcoming dates parsed from millionairemind.live. Put those dates in the email.
+   action_input: "next Never Work Again" or "upcoming MMI" or "EWC city"
+   MMI: dates from millionairemind.live. QL programmes: dates from the QL Google Sheet, not MMI.
 
 2. search_site
    action_input: keywords (city, venue, programme)
-   Bounded crawl of Success Resources websites.
+   Bounded crawl of Success Resources websites only — not Google.
 
 3. fetch_url
-   action_input: one https URL on the allowlist, e.g. https://www.millionairemind.live/madrid
-   Read that city page for venue/times. Prices on the page are stripped.
+   action_input: one https URL on the allowlist
+   Read that page. Prices on the page are stripped.
 
 4. lookup_sheet
-   action_input: city and programme, e.g. "Warsaw MMI"
-   Live Google Sheets. If no_row, do not quote a price.
+   action_input: programme and city, e.g. "Never Work Again" or "EWC food accommodation"
+   Live Google Sheets (Quinn = QL sheet, Maya = MMI sheet). If no_row, do not quote a price or date.
 
 5. lookup_registration
    action_input: customer email and name
@@ -62,6 +62,9 @@ def run(name: str, action_input: str, agent: str) -> str:
         return json_error(f"unknown tool {name}")
     if name in {"search_hub", "list_events"}:
         return fn(action_input, agent)
+    if name == "lookup_sheet":
+        prefer = {"maya": "mmi", "quinn": "ql", "rafa": "rafa"}.get(agent, "")
+        return fn(action_input, prefer)
     return fn(action_input)
 
 
