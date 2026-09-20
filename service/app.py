@@ -277,6 +277,15 @@ def root() -> dict:
     }
 
 
+def _event_sheet_codes() -> list[str]:
+    try:
+        from agents.tools import registrations
+
+        return [event["code"] for event in registrations.configured_events()]
+    except Exception:
+        return []
+
+
 @app.get("/health")
 def health() -> dict:
     return {
@@ -293,6 +302,7 @@ def health() -> dict:
             and (os.getenv("ACTIVECAMPAIGN_API_TOKEN") or os.getenv("AC_API_TOKEN") or "").strip()
         ),
         "agent_actions": (os.getenv("AGENT_ACTIONS") or "propose").strip().lower(),
+        "mmi_event_sheets": _event_sheet_codes(),
         **knowledge_status(),
     }
 

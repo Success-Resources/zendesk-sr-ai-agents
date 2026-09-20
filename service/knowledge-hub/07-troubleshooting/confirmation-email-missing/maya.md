@@ -17,11 +17,11 @@ Hello,
 
 Thank you for your message.
 
-We will check your registration email in our system and resend the confirmation if it is already on file.
+We will check the registration list for that MMI city (email in the Full List, Standard or VIP ticket) and resend the confirmation if you are already on file.
 
 Please also check inbox, spam, junk and promotions.
 
-If you registered with a different address, reply with that purchase email.
+If you registered with a different address, or if you have not told us which city, reply with the purchase email and the MMI city.
 
 Best regards,
 

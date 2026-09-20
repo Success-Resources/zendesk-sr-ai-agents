@@ -120,6 +120,13 @@ def lookup_sheet(query: str, prefer: str = "") -> str:
 
 def lookup_registration(query: str) -> str:
     """Look up a customer email/name. Never confirm registration on a miss."""
+    from agents.tools import registrations
+
+    event = registrations.lookup_event_registration(query)
+    if event.startswith("sheet_found=true"):
+        return event
+    if event.startswith("sheet_found=false") and registrations.detect_events(query):
+        return event
     q = (query or "").strip()
     emails = re.findall(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}", q, flags=re.I)
     result = lookup_sheet(q)

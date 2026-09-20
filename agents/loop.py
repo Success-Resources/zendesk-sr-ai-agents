@@ -145,8 +145,11 @@ def run_agent(
         "If they asked for a fact sheet: ask which city if missing, then send only the matching "
         "sr-event.com factsheet from APPROVED MMI LINKS. "
         "Facebook and WhatsApp groups: ask city/country if missing, then send only the listed group. "
-        "If they did not receive a confirmation email, use the ActiveCampaign result. "
-        "Do not claim an email was resent unless MODE=execute OK. "
+        "If they did not receive a confirmation email: tell them to check spam/junk/"
+        "promotions. Use the EVENT REGISTRATION / ActiveCampaign result. "
+        "Only say we found their booking if sheet_found=true. "
+        "Do not claim an email was resent unless MODE=execute OK or AC_TAG=added or AC_TAG=retriggered. "
+        "If sheet_found=false, ask for the purchase email and which city and set needs_human true. "
         "Prices only from lookup_sheet. If a date or price is missing, say a person will check "
         "and set needs_human true. Do not invent. JSON only."
     )

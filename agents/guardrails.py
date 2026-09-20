@@ -40,7 +40,9 @@ def check(email: str, tools_used: list[str], agent: str) -> tuple[str, bool, str
         return text, True, "ungrounded price blocked"
     if _DATE_CLAIM.search(text) and not (_LIVE_DATES & set(tools_used)):
         return text, True, "ungrounded date blocked"
-    if _REG_CONFIRM.search(text) and "lookup_registration" not in tools_used:
+    if _REG_CONFIRM.search(text) and not (
+        {"lookup_registration", "lookup_event_registration", "ac_fix_confirmation"} & set(tools_used)
+    ):
         return text, True, "registration confirmation blocked"
     if not text.strip():
         return text, True, "empty email"

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from agents.tools import activecampaign, docs, events, hub, links, sheets, web
+from agents.tools import activecampaign, docs, events, hub, links, registrations, sheets, web
 
 TOOLS = {
     "search_hub": hub.search_hub,
     "lookup_sheet": sheets.lookup_sheet,
     "lookup_registration": sheets.lookup_registration,
+    "lookup_event_registration": registrations.lookup_event_registration,
     "lookup_links": links.lookup_links,
     "lookup_ac": activecampaign.lookup_ac,
     "ac_fix_confirmation": activecampaign.ac_fix_confirmation,
@@ -36,9 +37,10 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
    action_input: programme and city, e.g. "Never Work Again" or "EWC food accommodation"
    Live Google Sheets (Quinn = QL sheet, Maya = MMI sheet). If no_row, do not quote a price or date.
 
-5. lookup_registration
-   action_input: customer email and name
-   Only confirm a booking if their email is in a matching row. Otherwise ask for the purchase email and set needs_human true.
+5. lookup_registration / lookup_event_registration
+   action_input: customer email plus the MMI city if they named one
+   Full List tab: column E = email, column B = Standard/VIP.
+   Only confirm a booking if sheet_found=true. Otherwise ask for the purchase email and city.
 
 6. lookup_links
    action_input: the ticket text (city/country if they named one)
@@ -54,9 +56,10 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
    Read-only ActiveCampaign contact and tags. Maya uses this when they did not get a confirmation email or e-ticket.
 
 9. ac_fix_confirmation
-   action_input: the customer email
-   Maya only. If the MMI tag is on the contact, resend confirmation. If not, start the MMI automation.
-   Default mode is propose (writes the plan in the note). execute only when AGENT_ACTIONS=execute.
+   action_input: customer email plus the ticket text (city / MMI code)
+   Maya only. Checks that city's Full List. If the email is there, adds
+   MMIYYMMCCC-Standard or MMIYYMMCCC-VIP in ActiveCampaign. If that tag is
+   already on the contact, it is removed and added again so the automation fires.
 
 10. lookup_doc
    action_input: a short phrase

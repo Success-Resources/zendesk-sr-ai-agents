@@ -1,0 +1,18 @@
+[
+  {
+    "city": "Stockholm",
+    "code": "MMI2609STO",
+    "aliases": ["stockholm", "sto"],
+    "sheet_id": "10-C3VjeTTRJq-MYy4cEMlUmz6UdRbaNsCXEKHSaHT3c",
+    "tab": "Full List",
+    "gid": "2037534786"
+  },
+  {
+    "city": "Rotterdam",
+    "code": "MMI2610ROT",
+    "aliases": ["rotterdam", "rot"],
+    "sheet_id": "1IhBzoSJeTuYf5VlKMlclOwCGTG9EEBIU_m3TIVup_z8",
+    "tab": "Full List",
+    "gid": ""
+  }
+]

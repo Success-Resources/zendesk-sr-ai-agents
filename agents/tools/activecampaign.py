@@ -1,8 +1,9 @@
 """ActiveCampaign lookup and Maya-only confirmation actions.
 
-propose (default): look up the contact and say what Maya would do.
-execute: start the resend automation if the MMI tag is present, otherwise start
-the main MMI automation. Never creates a contact. Never runs for Rafa.
+Confirmation resend is tag-based: if the email is on that MMI Full List,
+Maya adds MMIYYMMCCC-Standard or MMIYYMMCCC-VIP. If that tag is already on
+the contact, she removes it and adds it again so the AC automation fires.
+Never runs for Rafa.
 """
 
 from __future__ import annotations
@@ -10,9 +11,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
+
+from agents.tools import registrations
 
 _EMAIL = re.compile(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}", re.I)
 
@@ -40,10 +44,6 @@ def _token() -> str:
 def _mmi_tag_names() -> set[str]:
     raw = os.getenv("AC_MMI_TAG") or os.getenv("ACTIVECAMPAIGN_MMI_TAG") or "MMI"
     return {part.strip().lower() for part in raw.split(",") if part.strip()}
-
-
-def _id(name: str) -> str:
-    return (os.getenv(name) or "").strip()
 
 
 def _request(method: str, path: str, payload: dict | None = None) -> dict:
@@ -81,12 +81,13 @@ def _contact_by_email(email: str) -> dict | None:
     return contacts[0] if contacts else None
 
 
-def _tag_names(contact_id: str) -> list[str]:
+def _contact_tags(contact_id: str) -> list[dict]:
     data = _request("GET", f"contacts/{contact_id}/contactTags")
-    names: list[str] = []
+    out: list[dict] = []
     for row in data.get("contactTags") or []:
+        contact_tag_id = str(row.get("id") or "")
         tag_id = str(row.get("tag") or "")
-        if not tag_id:
+        if not contact_tag_id or not tag_id:
             continue
         try:
             tag = _request("GET", f"tags/{tag_id}").get("tag") or {}
@@ -94,8 +95,12 @@ def _tag_names(contact_id: str) -> list[str]:
             continue
         name = (tag.get("tag") or "").strip()
         if name:
-            names.append(name)
-    return names
+            out.append({"id": contact_tag_id, "tag_id": tag_id, "name": name})
+    return out
+
+
+def _tag_names(contact_id: str) -> list[str]:
+    return [row["name"] for row in _contact_tags(contact_id)]
 
 
 def _has_mmi_tag(names: list[str]) -> bool:
@@ -103,15 +108,55 @@ def _has_mmi_tag(names: list[str]) -> bool:
     return bool(have & _mmi_tag_names())
 
 
-def _start_automation(contact_id: str, automation_id: str) -> str:
-    if not automation_id:
-        return "skipped: automation id is not set on Render"
+def _tag_id(name: str) -> str:
+    data = _request("GET", f"tags?search={quote(name)}")
+    for row in data.get("tags") or []:
+        if (row.get("tag") or "").strip().lower() == name.lower():
+            return str(row.get("id") or "")
+    created = _request("POST", "tags", {"tag": {"tag": name, "tagType": "contact"}})
+    tag = created.get("tag") or {}
+    tag_id = str(tag.get("id") or "")
+    if not tag_id:
+        raise RuntimeError(f"could not create ActiveCampaign tag {name}")
+    return tag_id
+
+
+def _remove_tag(contact_tag_id: str) -> None:
+    _request("DELETE", f"contactTags/{contact_tag_id}")
+
+
+def _apply_tag(contact_id: str, tag_id: str) -> None:
     _request(
         "POST",
-        "contactAutomations",
-        {"contactAutomation": {"contact": contact_id, "automation": automation_id}},
+        "contactTags",
+        {"contactTag": {"contact": contact_id, "tag": tag_id}},
     )
-    return f"started automation {automation_id}"
+
+
+def _retrigger_tag(contact_id: str, tag_name: str, existing: list[dict]) -> str:
+    """Add the tag. If it is already on the contact, remove then add so AC fires again."""
+    tag_id = _tag_id(tag_name)
+    present = [row for row in existing if row["name"].lower() == tag_name.lower()]
+    if present:
+        for row in present:
+            _remove_tag(row["id"])
+        time.sleep(0.4)
+        _apply_tag(contact_id, tag_id)
+        return f"AC_TAG=retriggered tag={tag_name}"
+    _apply_tag(contact_id, tag_id)
+    return f"AC_TAG=added tag={tag_name}"
+
+
+def _create_contact(email: str, first: str, last: str) -> dict:
+    data = _request(
+        "POST",
+        "contacts",
+        {"contact": {"email": email, "firstName": first, "lastName": last}},
+    )
+    contact = data.get("contact") or {}
+    if not contact.get("id"):
+        raise RuntimeError(f"could not create ActiveCampaign contact for {email}")
+    return contact
 
 
 def lookup_ac(query: str) -> str:
@@ -152,59 +197,72 @@ def lookup_ac(query: str) -> str:
 
 
 def ac_fix_confirmation(query: str, agent: str = "maya") -> str:
-    """Maya: if MMI tag exists, resend confirmation; otherwise start the MMI automation."""
+    """Maya: Full List match → add MMIYYMMCCC-Standard or -VIP in ActiveCampaign."""
     if (agent or "").lower() != "maya":
         return "ActiveCampaign confirmation actions are Maya only."
     mode = _mode()
     if mode == "off":
-        return "ac_actions_off: lookup only is disabled too. Set AGENT_ACTIONS=propose or execute."
+        return "ac_actions_off: set AGENT_ACTIONS=propose or execute."
 
-    looked = lookup_ac(query)
-    if looked.startswith("ac_"):
-        return looked
+    sheet = registrations.lookup_event_registration(query)
+    email = registrations.first_email(query)
+    looked = lookup_ac(query) if email else "ac_no_email"
+    spam = (
+        "Always tell the customer to check inbox, spam, junk and promotions. "
+        "Do not invent a ticket number. E-tickets still go out 3–5 days before the event."
+    )
 
-    mmi_present = "mmi_tag_present=true" in looked
-    resend_id = _id("AC_MMI_RESEND_AUTOMATION_ID")
-    start_id = _id("AC_MMI_AUTOMATION_ID")
-    if mmi_present:
-        plan = (
-            f"PLAN: MMI tag is present. Resend the confirmation email "
-            f"(automation {resend_id or 'NOT SET — add AC_MMI_RESEND_AUTOMATION_ID'})."
-        )
-        action = "resend"
-        automation_id = resend_id
-    else:
-        plan = (
-            f"PLAN: MMI tag is not present. Start the MMI confirmation automation "
-            f"(automation {start_id or 'NOT SET — add AC_MMI_AUTOMATION_ID'})."
-        )
-        action = "start"
-        automation_id = start_id
-
-    if mode == "propose":
+    if not sheet.startswith("sheet_found=true"):
         return (
-            f"{looked}\n{plan}\n"
-            "MODE=propose: nothing was changed in ActiveCampaign. "
-            "A person can do it, or set AGENT_ACTIONS=execute on Render after the automations are tested. "
-            "Tell the customer we are checking / have asked the team to resend. Do not invent a ticket number."
+            f"{sheet}\n{looked}\n"
+            "PLAN: do not add an ActiveCampaign tag until the email is on that city's Full List. "
+            f"{spam}"
         )
 
-    contact_id = ""
-    match = re.search(r"contact id=(\d+)", looked)
-    if match:
-        contact_id = match.group(1)
-    if not contact_id or not automation_id:
+    tags = re.findall(r"\btag=(MMI\d{4}[A-Z]{3}-(?:Standard|VIP))\b", sheet)
+    if not tags:
         return (
-            f"{looked}\n{plan}\n"
-            "MODE=execute but the automation id is missing or the contact id was not parsed. "
-            "A person must complete this in ActiveCampaign."
+            f"{sheet}\n{looked}\n"
+            "PLAN: they are on the list but Standard/VIP is missing. A person must pick the tag. "
+            f"{spam}"
         )
+    plan = (
+        "PLAN: in ActiveCampaign, add tag(s) "
+        + ", ".join(tags)
+        + ". If the tag is already on the contact, remove it and add it again "
+        "so the confirmation automation is triggered."
+    )
+
+    if not configured():
+        return (
+            f"{sheet}\n{looked}\n{plan}\n"
+            "AC_TAG=skipped: ActiveCampaign is not configured. A person must add or re-add the tag. "
+            f"{spam}"
+        )
+
+    first = last = ""
+    name_match = re.search(r"\bname=(\S+)\s+(\S+)", sheet)
+    if name_match:
+        first, last = name_match.group(1), name_match.group(2)
     try:
-        result = _start_automation(contact_id, automation_id)
+        contact = _contact_by_email(email)
+        created = False
+        if not contact:
+            contact = _create_contact(email, first, last)
+            created = True
+        contact_id = str(contact.get("id") or "")
+        existing = _contact_tags(contact_id) if contact_id else []
+        results = [_retrigger_tag(contact_id, tag, existing) for tag in tags]
     except RuntimeError as exc:
-        return f"{looked}\n{plan}\nMODE=execute FAILED: {exc}. A person must finish this."
+        return f"{sheet}\n{looked}\n{plan}\nAC_TAG=failed: {exc}. A person must finish this."
+    created_bit = " created contact;" if created else ""
+    retriggered = any("AC_TAG=retriggered" in row for row in results)
+    added = any("AC_TAG=added" in row for row in results)
     return (
-        f"{looked}\n{plan}\nMODE=execute OK: {action} — {result}. "
-        "Tell the customer to check inbox, spam, junk and promotions. "
-        "E-tickets still go out 3–5 days before the event unless this was a confirmation email."
+        f"{sheet}\n{looked}\n{plan}\n"
+        f"MODE=execute OK:{created_bit} {'; '.join(results)}. "
+        "Tell the customer the confirmation is on its way and to check spam. "
+        + ("The city tag was already there, so it was removed and added again. " if retriggered else "")
+        + ("The city tag was added. " if added and not retriggered else "")
+        + spam
     )
