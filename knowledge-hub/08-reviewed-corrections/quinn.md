@@ -1,8 +1,26 @@
 # Reviewed corrections — Quinn
 
 **Owner agent:** Quinn  
-**Source:** Ticket review sheet, columns Q–T (verification status, review explanation, policy context, corrected response)  
-**Entries:** 7
+**Source:** Ticket review sheet, all 262 tickets (111 incorrect, 108 partially correct, 43 correct)  
+**Entries:** 10
+
+## I need the team to check my Quantum Leap, TTT, GBI, NWA, or EWC booking
+
+**Agent:** Quinn  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for your message.
+
+I want to make sure we give you accurate information. I’ve sent your enquiry to the relevant team for verification and will confirm the next step in writing.
+
+If your purchase details are not already included, please reply with the email used for the booking and your order or ticket number. Do not ask again for an email, receipt, or order number that is already in the thread.
+
+Kind regards,
+Success Resources Europe
+
+---
 
 ## I cannot access Train the Trainer, Quantum Leap, or my programme materials
 
@@ -22,7 +40,7 @@ Success Resources Europe
 
 ---
 
-## What is the date, timetable, or venue for Train the Trainer, GBI, NWA, or EWC
+## What is the date, timetable, venue, or hotel for my programme
 
 **Agent:** Quinn  
 **Tag:** Verify Booking
@@ -31,9 +49,9 @@ Hello,
 
 Thank you for your message.
 
-I’m checking the confirmed date, timetable, and venue details for your booking so that we do not send you outdated information.
+I’m checking the confirmed date, timetable, venue, and hotel details for your booking so that we do not send you outdated information, especially if you are arranging travel.
 
-Please confirm the registration email and programme if they are not already included. We’ll send the verified event details as soon as they are available.
+If the receipt is already in the thread, do not ask for the booking email again. We’ll reply in writing as soon as the final details are verified.
 
 Kind regards,
 Success Resources Europe
@@ -96,6 +114,26 @@ Success Resources Europe
 
 ---
 
+## Is there a replay of the live programme
+
+**Agent:** Quinn  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for your message.
+
+Replay availability depends on the specific programme and ticket type, so I’m checking the access terms for your booking rather than guessing.
+
+Please confirm the programme, event date, and purchase email address if they are not already in the thread. We’ll let you know whether a recording is included and how long it will remain available.
+
+Do not list future dates unless they are on the QL sheet.
+
+Kind regards,
+Success Resources Europe
+
+---
+
 ## I have a question about Cashflow or a programme detail that is not confirmed
 
 **Agent:** Quinn  
@@ -114,6 +152,24 @@ Success Resources Europe
 
 ---
 
+## A very short or unclear question about a country or event
+
+**Agent:** Quinn  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for your message.
+
+Could you please clarify what you would like to know — for example whether you are asking about an upcoming event, online access, language, or registration?
+
+Once we know what you need, we’ll send you the correct information. Do not say an event does not exist, and do not send dates or links, until that question is clear.
+
+Kind regards,
+Success Resources Europe
+
+---
+
 ## This email is an automated notification, not a customer question
 
 **Agent:** Quinn  
@@ -123,6 +179,8 @@ No customer reply is needed.
 
 Classify this as an automated or misrouted notification and send it to the relevant internal owner only if action is required.
 
-Do not draft a customer answer for it.
+A suspected phishing or password-reset email gets no reply. Do not click any links. Escalate it to the internal IT or security process.
+
+An unrelated missed call or robocall gets no reply. Close the ticket.
 
 ---
