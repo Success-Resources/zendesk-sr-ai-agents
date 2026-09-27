@@ -12,6 +12,7 @@ TOOLS = {
     "lookup_links": links.lookup_links,
     "lookup_ac": activecampaign.lookup_ac,
     "ac_fix_confirmation": activecampaign.ac_fix_confirmation,
+    "ac_unsubscribe_lists": activecampaign.ac_unsubscribe_lists,
     "lookup_doc": docs.lookup_doc,
     "list_events": events.list_events,
     "search_site": web.search_site,
@@ -61,7 +62,12 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
    MMIYYMMCCC-Standard or MMIYYMMCCC-VIP in ActiveCampaign. If that tag is
    already on the contact, it is removed and added again so the automation fires.
 
-10. lookup_doc
+10. ac_unsubscribe_lists
+   action_input: the email address on the Zendesk ticket
+   Maya, Quinn, and Rafa. Unsubscribes that address from every ActiveCampaign list.
+   Only say it is done when the result is AC_UNSUB=ok or AC_UNSUB=already.
+
+11. lookup_doc
    action_input: a short phrase
    Google Docs listed in GOOGLE_DOC_IDS only.
 
@@ -85,7 +91,7 @@ def run(name: str, action_input: str, agent: str) -> str:
     if name == "lookup_sheet":
         prefer = {"maya": "mmi", "quinn": "ql", "rafa": "rafa"}.get(agent, "")
         return fn(action_input, prefer)
-    if name == "ac_fix_confirmation":
+    if name in {"ac_fix_confirmation", "ac_unsubscribe_lists"}:
         return fn(action_input, agent)
     return fn(action_input)
 

@@ -2,7 +2,7 @@
 
 **Owner agent:** Quinn  
 **Source:** Ticket review sheet, all 262 tickets (111 incorrect, 108 partially correct, 43 correct)  
-**Entries:** 10
+**Entries:** 11
 
 ## I need the team to check my Quantum Leap, TTT, GBI, NWA, or EWC booking
 
@@ -164,6 +164,24 @@ Thank you for your message.
 Could you please clarify what you would like to know — for example whether you are asking about an upcoming event, online access, language, or registration?
 
 Once we know what you need, we’ll send you the correct information. Do not say an event does not exist, and do not send dates or links, until that question is clear.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## Please unsubscribe me from marketing emails
+
+**Agent:** Quinn  
+**Tag:** Escalate
+
+Hello,
+
+The address on the Zendesk ticket is checked in ActiveCampaign and removed from every marketing list.
+
+If AC_UNSUB=ok or AC_UNSUB=already, tell them that address will no longer receive marketing emails. If another promotional email arrives, they can reply with a copy so the remaining list can be identified.
+
+If AC_UNSUB=failed, skipped, or not_found, do not say it is done. Say a person will remove the address.
 
 Kind regards,
 Success Resources Europe

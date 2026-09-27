@@ -266,3 +266,101 @@ def ac_fix_confirmation(query: str, agent: str = "maya") -> str:
         + ("The city tag was added. " if added and not retriggered else "")
         + spam
     )
+
+
+def _account_lists() -> dict[str, str]:
+    names: dict[str, str] = {}
+    offset = 0
+    while offset <= 1000:
+        data = _request("GET", f"lists?limit=100&offset={offset}")
+        rows = data.get("lists") or []
+        for row in rows:
+            list_id = str(row.get("id") or "")
+            if list_id:
+                names[list_id] = (row.get("name") or f"list {list_id}").strip()
+        if len(rows) < 100:
+            break
+        offset += 100
+    return names
+
+
+def _memberships(contact_id: str) -> list[dict]:
+    data = _request("GET", f"contacts/{contact_id}/contactLists")
+    return list(data.get("contactLists") or [])
+
+
+def _unsubscribe_one(contact_id: str, list_id: str) -> None:
+    _request(
+        "POST",
+        "contactLists",
+        {"contactList": {"list": list_id, "contact": contact_id, "status": 2}},
+    )
+
+
+def ac_unsubscribe_lists(query: str, agent: str = "maya") -> str:
+    """Remove the ticket sender from every ActiveCampaign list they are still on."""
+    if (agent or "").lower() not in {"maya", "quinn", "rafa"}:
+        return "ActiveCampaign unsubscribe is for Maya, Quinn, and Rafa only."
+    mode = _mode()
+    if mode == "off":
+        return "ac_actions_off: set AGENT_ACTIONS=propose or execute. Do not say they were unsubscribed."
+    if not configured():
+        return (
+            "AC_UNSUB=skipped: ActiveCampaign is not configured. "
+            "A person must unsubscribe this address from all lists. Do not say it is done."
+        )
+    email = _first_email(query)
+    if not email:
+        return (
+            "AC_UNSUB=no_email: the Zendesk ticket has no sender email. "
+            "Ask which address to remove. Do not say they were unsubscribed."
+        )
+    try:
+        contact = _contact_by_email(email)
+    except RuntimeError as exc:
+        return f"AC_UNSUB=failed: {exc}. A person must unsubscribe {email}. Do not say it is done."
+    if not contact:
+        return (
+            f"AC_UNSUB=not_found email={email}. "
+            "No ActiveCampaign contact for the address on this ticket. "
+            "Do not create one. A person should confirm there is no other address. "
+            "Do not say they were unsubscribed."
+        )
+    contact_id = str(contact.get("id") or "")
+    try:
+        names = _account_lists()
+        rows = _memberships(contact_id)
+    except RuntimeError as exc:
+        return f"AC_UNSUB=failed email={email}: {exc}. A person must finish the lists."
+    subscribed = [row for row in rows if str(row.get("status") or "") != "2"]
+    if not subscribed:
+        return (
+            f"AC_UNSUB=already email={email} contact={contact_id}. "
+            "They are not on any active ActiveCampaign list. "
+            "Tell them marketing mail to this address is already stopped."
+        )
+    done: list[str] = []
+    failed: list[str] = []
+    for row in subscribed:
+        list_id = str(row.get("list") or "")
+        label = names.get(list_id) or f"list {list_id}"
+        try:
+            _unsubscribe_one(contact_id, list_id)
+            done.append(label)
+        except RuntimeError as exc:
+            failed.append(f"{label} ({exc})")
+    if failed and not done:
+        return (
+            f"AC_UNSUB=failed email={email}. " + "; ".join(failed) +
+            ". A person must unsubscribe the remaining lists. Do not say it is done."
+        )
+    result = f"AC_UNSUB=ok email={email} removed={', '.join(done) or '(none)'}"
+    if failed:
+        result += " still_failed=" + "; ".join(failed)
+        result += ". Tell them the lists that were removed. A person must finish the ones that failed."
+    else:
+        result += (
+            ". Tell them this email has been unsubscribed from marketing lists. "
+            "Another promotional email after this can be forwarded so the remaining list can be identified."
+        )
+    return result

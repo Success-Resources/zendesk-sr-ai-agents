@@ -166,7 +166,11 @@ Hello,
 
 I’m sorry you continued to receive messages after trying to unsubscribe.
 
-I’ve forwarded your email address for removal from the relevant marketing list. Please allow the system time to update. If another promotional email arrives, reply with a copy so the remaining list can be identified.
+The address on the Zendesk ticket is checked in ActiveCampaign and removed from every marketing list.
+
+If AC_UNSUB=ok or AC_UNSUB=already, tell them that address will no longer receive marketing emails. If another promotional email arrives, they can reply with a copy so the remaining list can be identified.
+
+If AC_UNSUB=failed, skipped, or not_found, do not say it is done. Say a person will remove the address.
 
 Kind regards,
 Success Resources Europe

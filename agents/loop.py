@@ -32,6 +32,17 @@ _CONFIRM = re.compile(
     r"not received (my )?(ticket|email|confirmation))\b",
     re.I,
 )
+_UNSUB = re.compile(
+    r"\b("
+    r"unsubscribe|un-subscribe|opt[\s-]?out|"
+    r"stop (these |the |your |all )?(emails|mailing|marketing|newsletters)|"
+    r"remove me from|take me off|"
+    r"do not (email|contact|send)|don'?t (email|send|contact)|"
+    r"no more (emails|marketing|newsletters|messages)"
+    r")\b",
+    re.I,
+)
+_QUOTE = re.compile(r"\n-{2,}\s*original message|\nOn .+wrote:|\nFrom:|\n>", re.I)
 
 
 @dataclass
@@ -66,6 +77,15 @@ def _parse(raw: str) -> dict:
             return {"action": "final", "email": "", "needs_human": True, "thought": "unreadable model output"}
 
 
+def asks_unsubscribe(subject: str, description: str) -> bool:
+    """True when the customer asked to stop marketing mail, not a footer in a quote."""
+    if _UNSUB.search(subject or ""):
+        return True
+    body = _QUOTE.split(description or "", maxsplit=1)[0]
+    body = re.sub(r"(?is)\n\s*sent to:.*$", "", body)
+    return bool(_UNSUB.search(body[:1500]))
+
+
 def _prefetch(
     agent: str,
     subject: str,
@@ -97,7 +117,10 @@ def _prefetch(
         blocks.append(links.lookup_links(ticket))
         used.append("lookup_links")
 
-    if agent == "maya" and _CONFIRM.search(ticket):
+    if asks_unsubscribe(subject, description):
+        blocks.append(activecampaign.ac_unsubscribe_lists(requester_email or ticket, agent))
+        used.append("ac_unsubscribe_lists")
+    elif agent == "maya" and _CONFIRM.search(ticket):
         ac_query = " ".join(part for part in (requester_email, ticket) if part).strip()
         blocks.append(activecampaign.ac_fix_confirmation(ac_query, agent))
         used.append("ac_fix_confirmation")
@@ -150,6 +173,9 @@ def run_agent(
         "Only say we found their booking if sheet_found=true. "
         "Do not claim an email was resent unless MODE=execute OK or AC_TAG=added or AC_TAG=retriggered. "
         "If sheet_found=false, ask for the purchase email and which city and set needs_human true. "
+        "If they asked to unsubscribe from marketing emails, use the ActiveCampaign list result. "
+        "Say they have been removed only when AC_UNSUB=ok or AC_UNSUB=already. "
+        "Use the email address on the Zendesk ticket. Do not unsubscribe a different address. "
         "Prices only from lookup_sheet. If a date or price is missing, say a person will check "
         "and set needs_human true. Do not invent. JSON only."
     )
