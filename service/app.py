@@ -17,6 +17,7 @@ import os
 import re
 import sys
 import threading
+import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest
@@ -204,22 +205,28 @@ def _zendesk_get(path: str) -> dict | None:
         return None
 
 
-def fetch_latest_requester_comment(ticket_id: str) -> str:
-    """Newest public comment written by the requester, including a reply on a solved ticket."""
-    ticket = _zendesk_get(f"tickets/{ticket_id}.json")
-    if not ticket:
-        return ""
-    requester_id = (ticket.get("ticket") or {}).get("requester_id")
-    data = _zendesk_get(f"tickets/{ticket_id}/comments.json?sort_order=desc")
+def _comment_text(comment: dict) -> str:
+    body = str(comment.get("body") or "").strip()
+    if body:
+        return body
+    html = str(comment.get("html_body") or "")
+    return re.sub(r"<[^>]+>", " ", html)
+
+
+def fetch_latest_public_comment(ticket_id: str) -> str:
+    """The newest public comment. Zendesk returns comments oldest-first."""
+    data = _zendesk_get(f"tickets/{ticket_id}/comments.json")
     if not data:
         return ""
-    for comment in data.get("comments") or []:
-        if not comment.get("public"):
-            continue
-        if requester_id and comment.get("author_id") != requester_id:
-            continue
-        return str(comment.get("body") or "")
-    return ""
+    public = [
+        comment
+        for comment in data.get("comments") or []
+        if comment.get("public", True)
+    ]
+    if not public:
+        return ""
+    public.sort(key=lambda comment: str(comment.get("created_at") or ""))
+    return _comment_text(public[-1])
 
 
 def _already_open_for(ticket_id: str, assignee_email: str) -> bool:
@@ -235,10 +242,21 @@ def _already_open_for(ticket_id: str, assignee_email: str) -> bool:
     return email == assignee_email.strip().lower()
 
 
-def assign_open_for_human(ticket_id: str) -> bool:
+def _ticket_status(ticket_id: str) -> str:
+    data = _zendesk_get(f"tickets/{ticket_id}.json")
+    return str(((data or {}).get("ticket") or {}).get("status") or "")
+
+
+def assign_open_for_human(ticket_id: str, hinted_comment: str = "") -> bool:
     """Reopen and assign when the requester asks for a person. No comment is added."""
-    message = fetch_latest_requester_comment(ticket_id)
-    if not asks_for_human("", message):
+    latest = fetch_latest_public_comment(ticket_id)
+    if not asks_for_human("", latest) and not asks_for_human("", hinted_comment):
+        log.info(
+            "human handoff no match ticket_id=%s latest_len=%s hint_len=%s",
+            ticket_id,
+            len(latest),
+            len(hinted_comment or ""),
+        )
         return False
     assignee = _human_assignee_email()
     if assignee and _already_open_for(ticket_id, assignee):
@@ -252,7 +270,17 @@ def assign_open_for_human(ticket_id: str) -> bool:
         fields.pop("assignee_email", None)
         ok, detail = _put_ticket(ticket_id, fields)
         detail = f"{detail}; assignee {assignee} was not applied"
-    log.info("human handoff ticket_id=%s ok=%s detail=%s", ticket_id, ok, detail)
+    # The inbound reply can land after this update and leave the ticket solved.
+    if ok and _ticket_status(ticket_id) != "open":
+        time.sleep(2)
+        ok, detail = _put_ticket(ticket_id, fields)
+    log.info(
+        "human handoff ticket_id=%s ok=%s status=%s detail=%s",
+        ticket_id,
+        ok,
+        _ticket_status(ticket_id),
+        detail,
+    )
     return True
 
 
@@ -422,9 +450,10 @@ def _draft_and_post(
     tags: str,
     requester_name: str,
     requester_email: str = "",
+    latest_comment: str = "",
 ) -> None:
     try:
-        if assign_open_for_human(ticket_id):
+        if assign_open_for_human(ticket_id, latest_comment):
             log.info("human handoff only ticket_id=%s", ticket_id)
             _release_ticket(ticket_id)
             return
@@ -543,6 +572,9 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
     tags = body.get("tags") or ticket.get("tags") or ""
     if isinstance(tags, list):
         tags = " ".join(str(t) for t in tags)
+    latest_comment = str(
+        body.get("latest_comment") or body.get("comment") or ticket.get("latest_comment") or ""
+    )
 
     log.info("webhook received ticket_id=%s subject=%s", ticket_id, subject)
 
@@ -557,9 +589,10 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
         )
 
     # A reply on a ticket we already answered must still be able to reopen it.
-    if _already_drafted(tags):
+    # Also catch the human request from the webhook body before another solve.
+    if _already_drafted(tags) or asks_for_human("", latest_comment):
         log.info("webhook follow-up ticket_id=%s", ticket_id)
-        background_tasks.add_task(assign_open_for_human, ticket_id)
+        background_tasks.add_task(assign_open_for_human, ticket_id, latest_comment)
         return JSONResponse(
             {
                 "received": True,
@@ -589,6 +622,7 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
         str(tags),
         str(requester_name),
         str(requester_email),
+        latest_comment,
     )
     return JSONResponse(
         {
