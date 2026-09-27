@@ -1,8 +1,11 @@
-"""Zendesk webhook → Maya/Quinn/Rafa draft → private note.
+"""Zendesk webhook → Maya/Quinn/Rafa draft → private note, or a public solved reply in test.
 
 AGENT_BACKEND=matcher  copy closest GitHub email (Vercel Hobby)
 AGENT_BACKEND=claude   generate with Claude API + hub/site/sheet tools (remote)
 AGENT_BACKEND=ollama   local laptop test only
+
+Test stage: requesters in ZENDESK_PUBLIC_SOLVE_EMAILS get a public reply and status solved.
+Anyone who asks to speak to a person is assigned to ZENDESK_HUMAN_ASSIGNEE_EMAIL instead.
 """
 
 from __future__ import annotations
@@ -11,6 +14,7 @@ import base64
 import json
 import logging
 import os
+import re
 import sys
 import threading
 from pathlib import Path
@@ -39,6 +43,17 @@ app = FastAPI(title="SR Zendesk AI")
 _draft_lock = threading.Lock()
 _claimed_tickets: set[str] = set()
 _AI_DRAFT_TAGS = frozenset({"ai_draft_only", "ai_generated", "ai_matcher_fallback"})
+_DEFAULT_TEST_EMAIL = "akram.r@srglobal.com"
+_HUMAN_REQUEST = re.compile(
+    r"\b("
+    r"(?:talk|speak|chat) (?:to|with) (?:a |an )?(?:real )?(?:human(?: being)?|person)"
+    r"|answer from (?:a |an )?(?:real )?(?:human|person)"
+    r"|(?:need|want) (?:a |an )?(?:real )?human"
+    r"|human being"
+    r")\b",
+    re.I,
+)
+_QUOTE = re.compile(r"\n-{2,}\s*original message|\nOn .+wrote:|\nFrom:|\n>", re.I)
 
 
 @app.on_event("startup")
@@ -87,6 +102,34 @@ def _zendesk_subdomain() -> str:
     if sub.endswith(".zendesk.com"):
         sub = sub[: -len(".zendesk.com")]
     return sub
+
+
+def _email_set(env_name: str, default: str) -> set[str]:
+    raw = os.getenv(env_name)
+    if raw is None:
+        raw = default
+    return {part.strip().lower() for part in raw.split(",") if part.strip()}
+
+
+def _public_solve_emails() -> set[str]:
+    """Requesters who receive a public reply and Solved. Empty env disables it."""
+    return _email_set("ZENDESK_PUBLIC_SOLVE_EMAILS", _DEFAULT_TEST_EMAIL)
+
+
+def _human_assignee_email() -> str:
+    raw = os.getenv("ZENDESK_HUMAN_ASSIGNEE_EMAIL")
+    if raw is None:
+        return _DEFAULT_TEST_EMAIL
+    return raw.strip().lower()
+
+
+def asks_for_human(subject: str, description: str) -> bool:
+    """True when this message asks for a person, not a quoted earlier email."""
+    if _HUMAN_REQUEST.search(subject or ""):
+        return True
+    body = _QUOTE.split(description or "", maxsplit=1)[0]
+    body = re.sub(r"(?is)\n\s*sent to:.*$", "", body)
+    return bool(_HUMAN_REQUEST.search(body[:2000]))
 
 
 def _zendesk_configured() -> bool:
@@ -141,6 +184,37 @@ def _release_ticket(ticket_id: str) -> None:
         _claimed_tickets.discard(ticket_id)
 
 
+def fetch_requester_email(ticket_id: str) -> str:
+    """Used when the webhook body has no requester email."""
+    creds = _zendesk_auth_header()
+    if not creds:
+        return ""
+    subdomain, auth = creds
+    headers = {"Authorization": auth, "Accept": "application/json"}
+    try:
+        req = UrlRequest(
+            f"https://{subdomain}.zendesk.com/api/v2/tickets/{ticket_id}.json",
+            method="GET",
+            headers=headers,
+        )
+        with urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        requester_id = (data.get("ticket") or {}).get("requester_id")
+        if not requester_id:
+            return ""
+        user_req = UrlRequest(
+            f"https://{subdomain}.zendesk.com/api/v2/users/{requester_id}.json",
+            method="GET",
+            headers=headers,
+        )
+        with urlopen(user_req, timeout=15) as resp:
+            user = json.loads(resp.read().decode("utf-8"))
+        return str((user.get("user") or {}).get("email") or "").strip()
+    except Exception:
+        log.exception("zendesk requester lookup failed ticket_id=%s", ticket_id)
+        return ""
+
+
 def fetch_ticket_tags(ticket_id: str) -> list[str]:
     creds = _zendesk_auth_header()
     if not creds:
@@ -160,16 +234,13 @@ def fetch_ticket_tags(ticket_id: str) -> list[str]:
         return []
 
 
-def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None = None) -> tuple[bool, str]:
+def _put_ticket(ticket_id: str, ticket: dict) -> tuple[bool, str]:
     creds = _zendesk_auth_header()
     if not creds:
         return False, "missing ZENDESK_SUBDOMAIN, ZENDESK_EMAIL, or ZENDESK_API_TOKEN"
 
     subdomain, auth = creds
     url = f"https://{subdomain}.zendesk.com/api/v2/tickets/{ticket_id}.json"
-    ticket: dict = {"comment": {"body": body, "public": False}}
-    if extra_tags:
-        ticket["additional_tags"] = extra_tags
     payload = json.dumps({"ticket": ticket}).encode("utf-8")
     req = UrlRequest(
         url,
@@ -184,15 +255,54 @@ def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None =
     try:
         with urlopen(req, timeout=20) as resp:
             status = getattr(resp, "status", 200)
-            log.info("zendesk note posted ticket_id=%s status=%s", ticket_id, status)
+            log.info(
+                "zendesk ticket updated ticket_id=%s http=%s public=%s status=%s assignee=%s",
+                ticket_id,
+                status,
+                (ticket.get("comment") or {}).get("public"),
+                ticket.get("status") or "",
+                ticket.get("assignee_email") or "",
+            )
             return True, f"zendesk {status}"
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:500]
-        log.error("zendesk note failed ticket_id=%s status=%s body=%s", ticket_id, exc.code, detail)
-        return False, f"zendesk {exc.code}"
+        log.error("zendesk update failed ticket_id=%s status=%s body=%s", ticket_id, exc.code, detail)
+        return False, f"zendesk {exc.code}: {detail}"
     except URLError as exc:
-        log.error("zendesk note failed ticket_id=%s error=%s", ticket_id, exc)
+        log.error("zendesk update failed ticket_id=%s error=%s", ticket_id, exc)
         return False, "zendesk connection error"
+
+
+def post_ticket_update(
+    ticket_id: str,
+    body: str,
+    *,
+    public: bool,
+    extra_tags: list[str] | None = None,
+    status: str | None = None,
+    assignee_email: str | None = None,
+) -> tuple[bool, str]:
+    ticket: dict = {"comment": {"body": body, "public": public}}
+    if extra_tags:
+        ticket["additional_tags"] = extra_tags
+    if status:
+        ticket["status"] = status
+    if assignee_email:
+        ticket["assignee_email"] = assignee_email
+    ok, detail = _put_ticket(ticket_id, ticket)
+    if ok or not assignee_email:
+        return ok, detail
+    # A bad assignee must not block the note. Retry the same comment without it.
+    log.error("zendesk assignee skipped ticket_id=%s assignee=%s", ticket_id, assignee_email)
+    ticket.pop("assignee_email", None)
+    ok, retry = _put_ticket(ticket_id, ticket)
+    if ok:
+        return True, f"{retry}; assignee {assignee_email} was not applied"
+    return False, retry
+
+
+def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None = None) -> tuple[bool, str]:
+    return post_ticket_update(ticket_id, body, public=False, extra_tags=extra_tags)
 
 
 def _build_draft(
@@ -201,7 +311,8 @@ def _build_draft(
     description: str,
     requester_name: str,
     requester_email: str = "",
-) -> tuple[str, str, list[str], str]:
+) -> tuple[str, str, list[str], str, str]:
+    """Returns agent, matched, tags, private note, and the customer reply with no staff footer."""
     extra: list[str] = []
     if _backend() in {"ollama", "claude"}:
         try:
@@ -217,19 +328,19 @@ def _build_draft(
                 str(requester_email),
             )
             note_body, extra, matched = _compose_generated_note(result)
-            return agent, matched, extra, note_body
+            return agent, matched, extra, note_body, result.email.strip()
         except Exception:
             log.exception("agent generate failed; falling back to GitHub matcher")
             agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
             extra = ["ai_draft_only", f"ai_{agent}", "ai_matcher_fallback"]
             if matched and matched != "none":
                 extra.append("ai_hub_match")
-            return agent, matched, extra, note_body
+            return agent, matched, extra, note_body, ""
     agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
     extra = ["ai_draft_only", f"ai_{agent}"]
     if matched and matched != "none":
         extra.append("ai_hub_match")
-    return agent, matched, extra, note_body
+    return agent, matched, extra, note_body, ""
 
 
 def _draft_and_post(
@@ -245,16 +356,49 @@ def _draft_and_post(
         if _already_drafted(tags) or _already_drafted(live_tags):
             log.info("skip already drafted ticket_id=%s", ticket_id)
             return
-        agent, matched, extra, note_body = _build_draft(
+        if not requester_email.strip():
+            requester_email = fetch_requester_email(ticket_id)
+        agent, matched, extra, note_body, public_body = _build_draft(
             tags, subject, description, requester_name, requester_email
         )
-        posted, error = post_internal_note(ticket_id, note_body, extra)
+        requester = requester_email.strip().lower()
+        disposition = "private_note"
+        if asks_for_human(subject, description):
+            assignee = _human_assignee_email()
+            handoff_tags = list(extra) + ["needs_human", "ai_assigned_human"]
+            posted, error = post_ticket_update(
+                ticket_id,
+                note_body,
+                public=False,
+                extra_tags=handoff_tags,
+                assignee_email=assignee or None,
+            )
+            disposition = "assigned_human"
+        elif (
+            requester in _public_solve_emails()
+            and public_body
+            and matched.startswith("generated")
+        ):
+            posted, error = post_ticket_update(
+                ticket_id,
+                public_body,
+                public=True,
+                status="solved",
+                extra_tags=["ai_generated", f"ai_{agent}", "ai_public_reply", "ai_solved"],
+            )
+            disposition = "public_solved"
+            if not posted:
+                posted, error = post_internal_note(ticket_id, note_body, extra)
+                disposition = "public_solve_failed_private_note"
+        else:
+            posted, error = post_internal_note(ticket_id, note_body, extra)
         log.info(
-            "draft backend=%s agent=%s matched=%s ticket_id=%s posted=%s error=%s",
+            "draft backend=%s agent=%s matched=%s ticket_id=%s disposition=%s posted=%s error=%s",
             _backend(),
             agent,
             matched,
             ticket_id,
+            disposition,
             posted,
             error,
         )
@@ -302,6 +446,8 @@ def health() -> dict:
             and (os.getenv("ACTIVECAMPAIGN_API_TOKEN") or os.getenv("AC_API_TOKEN") or "").strip()
         ),
         "agent_actions": (os.getenv("AGENT_ACTIONS") or "propose").strip().lower(),
+        "public_solve_emails": sorted(_public_solve_emails()),
+        "human_assignee_email": _human_assignee_email(),
         "mmi_event_sheets": _event_sheet_codes(),
         **knowledge_status(),
     }

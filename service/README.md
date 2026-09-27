@@ -2,7 +2,7 @@
 
 Step 5: on startup (and every 10 minutes) the service **downloads** `Success-Resources/zendesk-sr-ai-agents` from GitHub and reads `knowledge-hub/`. If GitHub is unreachable, it uses the bundled copy in `service/knowledge-hub`.
 
-The internal note is the **approved email** from the hub — the text staff should send to the customer. It is still `public: false`.
+The internal note is the **approved email** from the hub — the text staff should send to the customer. It is still `public: false`, except for requester addresses in `ZENDESK_PUBLIC_SOLVE_EMAILS`. Those tickets get a public reply and status **solved**. If the customer asks to speak to a person, the ticket is assigned to `ZENDESK_HUMAN_ASSIGNEE_EMAIL` and stays a private note.
 
 - `GET /health` — includes `source` (`github:...` or `bundled`) and `entries`
 - `POST /zendesk/webhook`
