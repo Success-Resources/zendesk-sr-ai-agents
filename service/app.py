@@ -126,13 +126,15 @@ def _human_assignee_email() -> str:
     return raw.strip().lower()
 
 
-def asks_for_human(subject: str, description: str) -> bool:
-    """True when this message asks for a person, not a quoted earlier email."""
+def asks_for_human(subject: str, description: str, *, full: bool = False) -> bool:
+    """True when this message asks for a person."""
     if _HUMAN_REQUEST.search(subject or ""):
         return True
-    body = _QUOTE.split(description or "", maxsplit=1)[0]
-    body = re.sub(r"(?is)\n\s*sent to:.*$", "", body)
-    return bool(_HUMAN_REQUEST.search(body[:2000]))
+    raw = description or ""
+    if not full:
+        raw = _QUOTE.split(raw, maxsplit=1)[0]
+        raw = re.sub(r"(?is)\n\s*sent to:.*$", "", raw)
+    return bool(_HUMAN_REQUEST.search(raw[:8000]))
 
 
 def _zendesk_configured() -> bool:
@@ -213,20 +215,39 @@ def _comment_text(comment: dict) -> str:
     return re.sub(r"<[^>]+>", " ", html)
 
 
-def fetch_latest_public_comment(ticket_id: str) -> str:
-    """The newest public comment. Zendesk returns comments oldest-first."""
+def _comments_ask_for_human(ticket_id: str) -> bool:
+    """Any comment on the ticket, including a reply under the solved answer."""
     data = _zendesk_get(f"tickets/{ticket_id}/comments.json")
     if not data:
-        return ""
-    public = [
-        comment
-        for comment in data.get("comments") or []
-        if comment.get("public", True)
-    ]
-    if not public:
-        return ""
-    public.sort(key=lambda comment: str(comment.get("created_at") or ""))
-    return _comment_text(public[-1])
+        return False
+    for comment in data.get("comments") or []:
+        if asks_for_human("", _comment_text(comment), full=True):
+            return True
+    return False
+
+
+_open_custom_status_id: int | None = None
+_open_custom_status_checked = False
+
+
+def _default_open_custom_status_id() -> int | None:
+    """Used when the account has custom ticket statuses and plain status=open does not stick."""
+    global _open_custom_status_id, _open_custom_status_checked
+    if _open_custom_status_checked:
+        return _open_custom_status_id
+    _open_custom_status_checked = True
+    data = _zendesk_get("custom_statuses.json") or {}
+    chosen = None
+    for row in data.get("custom_statuses") or []:
+        if str(row.get("status_category") or "") != "open" or row.get("active") is False:
+            continue
+        if row.get("default"):
+            chosen = row.get("id")
+            break
+        chosen = chosen or row.get("id")
+    if chosen:
+        _open_custom_status_id = int(chosen)
+    return _open_custom_status_id
 
 
 def _already_open_for(ticket_id: str, assignee_email: str) -> bool:
@@ -249,14 +270,8 @@ def _ticket_status(ticket_id: str) -> str:
 
 def assign_open_for_human(ticket_id: str, hinted_comment: str = "") -> bool:
     """Reopen and assign when the requester asks for a person. No comment is added."""
-    latest = fetch_latest_public_comment(ticket_id)
-    if not asks_for_human("", latest) and not asks_for_human("", hinted_comment):
-        log.info(
-            "human handoff no match ticket_id=%s latest_len=%s hint_len=%s",
-            ticket_id,
-            len(latest),
-            len(hinted_comment or ""),
-        )
+    if not asks_for_human("", hinted_comment, full=True) and not _comments_ask_for_human(ticket_id):
+        log.info("human handoff no match ticket_id=%s hint_len=%s", ticket_id, len(hinted_comment or ""))
         return False
     assignee = _human_assignee_email()
     if assignee and _already_open_for(ticket_id, assignee):
@@ -266,22 +281,26 @@ def assign_open_for_human(ticket_id: str, hinted_comment: str = "") -> bool:
     if assignee:
         fields["assignee_email"] = assignee
     ok, detail = _put_ticket(ticket_id, fields)
-    if not ok and assignee:
-        fields.pop("assignee_email", None)
-        ok, detail = _put_ticket(ticket_id, fields)
-        detail = f"{detail}; assignee {assignee} was not applied"
-    # The inbound reply can land after this update and leave the ticket solved.
-    if ok and _ticket_status(ticket_id) != "open":
+    status = _ticket_status(ticket_id) if ok else ""
+    if status != "open":
+        custom_id = _default_open_custom_status_id()
+        if custom_id:
+            fields["custom_status_id"] = custom_id
+            fields["status"] = "open"
+        if not ok and assignee:
+            fields.pop("assignee_email", None)
+            detail = f"{detail}; assignee {assignee} was not applied"
         time.sleep(2)
         ok, detail = _put_ticket(ticket_id, fields)
+        status = _ticket_status(ticket_id)
     log.info(
         "human handoff ticket_id=%s ok=%s status=%s detail=%s",
         ticket_id,
         ok,
-        _ticket_status(ticket_id),
+        status,
         detail,
     )
-    return True
+    return status == "open"
 
 
 def fetch_requester_email(ticket_id: str) -> str:

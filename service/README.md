@@ -4,7 +4,7 @@ Step 5: on startup (and every 10 minutes) the service **downloads** `Success-Res
 
 The internal note is the **approved email** from the hub — the text staff should send to the customer. It is still `public: false`, except for requester addresses in `ZENDESK_PUBLIC_SOLVE_EMAILS`. Those tickets get a public reply and status **solved**. If the customer asks to speak to a person, on a new ticket or in a reply on the same ticket, the status is set to **open** and the ticket is assigned to `ZENDESK_HUMAN_ASSIGNEE_EMAIL`. No note is added.
 
-That reply only reaches the service if a second Zendesk trigger fires when the requester comments. Conditions, all of them: Ticket is Updated, Comment is present, Comment is public, Requester is (current user). Same webhook URL and JSON body as the create trigger. Add `"latest_comment": "{{ticket.latest_comment}}"` to that JSON.
+That reply only reaches the service if a second Zendesk trigger fires on the comment. Conditions, all of them: Ticket is Updated, Comment is present, Comment is public. Do not add “Requester is (current user)” and do not exclude the `ai_generated` tag — both stop the reply from being seen. The reply must be a public comment. Same webhook URL and JSON body as the create trigger, including `"latest_comment": "{{ticket.latest_comment}}"`.
 
 - `GET /health` — includes `source` (`github:...` or `bundled`) and `entries`
 - `POST /zendesk/webhook`
