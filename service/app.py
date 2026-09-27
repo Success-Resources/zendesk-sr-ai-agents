@@ -42,7 +42,9 @@ app = FastAPI(title="SR Zendesk AI")
 # without this lock each retry bills again and posts another note.
 _draft_lock = threading.Lock()
 _claimed_tickets: set[str] = set()
-_AI_DRAFT_TAGS = frozenset({"ai_draft_only", "ai_generated", "ai_matcher_fallback"})
+_AI_DRAFT_TAGS = frozenset(
+    {"ai_draft_only", "ai_generated", "ai_matcher_fallback", "ai_assigned_human"}
+)
 _DEFAULT_TEST_EMAIL = "akram.r@srglobal.com"
 _HUMAN_REQUEST = re.compile(
     r"\b("
@@ -182,6 +184,76 @@ def _claim_ticket(ticket_id: str) -> bool:
 def _release_ticket(ticket_id: str) -> None:
     with _draft_lock:
         _claimed_tickets.discard(ticket_id)
+
+
+def _zendesk_get(path: str) -> dict | None:
+    creds = _zendesk_auth_header()
+    if not creds:
+        return None
+    subdomain, auth = creds
+    req = UrlRequest(
+        f"https://{subdomain}.zendesk.com/api/v2/{path}",
+        method="GET",
+        headers={"Authorization": auth, "Accept": "application/json"},
+    )
+    try:
+        with urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        log.exception("zendesk get failed path=%s", path)
+        return None
+
+
+def fetch_latest_requester_comment(ticket_id: str) -> str:
+    """Newest public comment written by the requester, including a reply on a solved ticket."""
+    ticket = _zendesk_get(f"tickets/{ticket_id}.json")
+    if not ticket:
+        return ""
+    requester_id = (ticket.get("ticket") or {}).get("requester_id")
+    data = _zendesk_get(f"tickets/{ticket_id}/comments.json?sort_order=desc")
+    if not data:
+        return ""
+    for comment in data.get("comments") or []:
+        if not comment.get("public"):
+            continue
+        if requester_id and comment.get("author_id") != requester_id:
+            continue
+        return str(comment.get("body") or "")
+    return ""
+
+
+def _already_open_for(ticket_id: str, assignee_email: str) -> bool:
+    data = _zendesk_get(f"tickets/{ticket_id}.json")
+    ticket = (data or {}).get("ticket") or {}
+    if str(ticket.get("status") or "") != "open":
+        return False
+    assignee_id = ticket.get("assignee_id")
+    if not assignee_id or not assignee_email:
+        return False
+    user = _zendesk_get(f"users/{assignee_id}.json")
+    email = str(((user or {}).get("user") or {}).get("email") or "").strip().lower()
+    return email == assignee_email.strip().lower()
+
+
+def assign_open_for_human(ticket_id: str) -> bool:
+    """Reopen and assign when the requester asks for a person. No comment is added."""
+    message = fetch_latest_requester_comment(ticket_id)
+    if not asks_for_human("", message):
+        return False
+    assignee = _human_assignee_email()
+    if assignee and _already_open_for(ticket_id, assignee):
+        log.info("human handoff already open ticket_id=%s", ticket_id)
+        return True
+    fields: dict = {"status": "open", "additional_tags": ["ai_assigned_human"]}
+    if assignee:
+        fields["assignee_email"] = assignee
+    ok, detail = _put_ticket(ticket_id, fields)
+    if not ok and assignee:
+        fields.pop("assignee_email", None)
+        ok, detail = _put_ticket(ticket_id, fields)
+        detail = f"{detail}; assignee {assignee} was not applied"
+    log.info("human handoff ticket_id=%s ok=%s detail=%s", ticket_id, ok, detail)
+    return True
 
 
 def fetch_requester_email(ticket_id: str) -> str:
@@ -352,6 +424,10 @@ def _draft_and_post(
     requester_email: str = "",
 ) -> None:
     try:
+        if assign_open_for_human(ticket_id):
+            log.info("human handoff only ticket_id=%s", ticket_id)
+            _release_ticket(ticket_id)
+            return
         live_tags = fetch_ticket_tags(ticket_id)
         if _already_drafted(tags) or _already_drafted(live_tags):
             log.info("skip already drafted ticket_id=%s", ticket_id)
@@ -363,18 +439,7 @@ def _draft_and_post(
         )
         requester = requester_email.strip().lower()
         disposition = "private_note"
-        if asks_for_human(subject, description):
-            assignee = _human_assignee_email()
-            handoff_tags = list(extra) + ["needs_human", "ai_assigned_human"]
-            posted, error = post_ticket_update(
-                ticket_id,
-                note_body,
-                public=False,
-                extra_tags=handoff_tags,
-                assignee_email=assignee or None,
-            )
-            disposition = "assigned_human"
-        elif (
+        if (
             requester in _public_solve_emails()
             and public_body
             and matched.startswith("generated")
@@ -491,14 +556,16 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
             }
         )
 
+    # A reply on a ticket we already answered must still be able to reopen it.
     if _already_drafted(tags):
-        log.info("skip webhook already drafted ticket_id=%s", ticket_id)
+        log.info("webhook follow-up ticket_id=%s", ticket_id)
+        background_tasks.add_task(assign_open_for_human, ticket_id)
         return JSONResponse(
             {
                 "received": True,
+                "accepted": True,
                 "ticket_id": ticket_id,
-                "skipped": "already drafted",
-                "note_posted": False,
+                "handoff_check": True,
             }
         )
 
