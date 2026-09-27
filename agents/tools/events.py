@@ -203,7 +203,7 @@ def fetch_city(city: str) -> str:
     extra = "\n".join(venue_bits).strip()
     return (
         f"CITY PAGE for {city} ({url})\n"
-        f"{raw[:1800]}\n"
+        f"{raw[:3600]}\n"
         + (f"VENUE/SCHEDULE SNIPPETS:\n{extra}" if extra else "No venue line on this page. Do not invent a venue.")
     )
 
@@ -322,5 +322,25 @@ def _list_mmi(query: str, agent: str) -> str:
             "Maya/Europe: listed Europe dates first. "
             "Point them to https://www.millionairemind.live/ for the full calendar."
         )
-    lines.append("Do not copy ticket prices from these pages. Prices only from lookup_sheet.")
+    lines.append(
+        "If a city page states a Standard or VIP price, quote that figure for that city only. "
+        "Do not invent a price, and do not ask the customer to reply with a city."
+    )
     return "\n".join(lines)
+
+
+def fetch_next_city(query: str = "", agent: str = "maya") -> str:
+    """Soonest upcoming city page, for a general price or trainer question."""
+    listing = list_events(query, agent)
+    match = re.search(r"^- ([^:\n]+):", listing, re.M)
+    if not match:
+        return "no_next_city. Do not invent a price or trainer. Use the dates already listed."
+    city = match.group(1).strip()
+    page = fetch_city(city)
+    return (
+        "NEXT EVENT PAGE. This is the soonest upcoming event. "
+        "Quote its Standard and VIP prices and the lead trainer name only if this text states them. "
+        "Say which city those figures belong to. Answer what they will learn from the hub. "
+        "Do not ask the customer which city they want, and do not say a teammate will send the price.\n\n"
+        + page
+    )

@@ -25,9 +25,27 @@ _REG_CONFIRM = re.compile(
 _LIVE_DATES = {"list_events", "search_site", "fetch_url", "lookup_sheet"}
 
 
-def check(email: str, tools_used: list[str], agent: str) -> tuple[str, bool, str]:
+def _drop_ungrounded_prices(email: str, live: str) -> str:
+    """Remove a price the model wrote that was not in the live page or sheet."""
+    amounts = re.findall(r"(?:€|£|\$)\s?\d[\d.,]*", email or "")
+    if not amounts:
+        return email
+    hay = re.sub(r"\s+", "", live or "")
+    bad = [amount for amount in amounts if re.sub(r"\s+", "", amount) not in hay]
+    if not bad:
+        return email
+    kept = []
+    for line in (email or "").splitlines():
+        compact = re.sub(r"\s+", "", line)
+        if any(re.sub(r"\s+", "", amount) in compact for amount in bad):
+            continue
+        kept.append(line)
+    return "\n".join(kept).strip()
+
+
+def check(email: str, tools_used: list[str], agent: str, live: str = "") -> tuple[str, bool, str]:
     """Return email, needs_human, reason."""
-    text = email or ""
+    text = _drop_ungrounded_prices(email or "", live)
     if agent == "rafa":
         return text, True, "Rafa drafts only. A person sends."
     if _REFUND.search(text):
@@ -36,7 +54,7 @@ def check(email: str, tools_used: list[str], agent: str) -> tuple[str, bool, str
             True,
             "refund language blocked",
         )
-    if _PRICE.search(text) and "lookup_sheet" not in tools_used:
+    if _PRICE.search(text) and not ({"lookup_sheet", "fetch_url", "search_site"} & set(tools_used)):
         return text, True, "ungrounded price blocked"
     if _DATE_CLAIM.search(text) and not (_LIVE_DATES & set(tools_used)):
         return text, True, "ungrounded date blocked"

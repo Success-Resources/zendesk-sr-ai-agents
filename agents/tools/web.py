@@ -19,10 +19,6 @@ _TTL = 1800.0
 _lock = Lock()
 _index: list[tuple[str, str]] = []
 _loaded_at = 0.0
-_PRICE_BITS = re.compile(
-    r"(€|£|\$)\s?\d[\d.,]*|\b\d+([.,]\d+)?\s*(eur|euro|euros|usd|gbp|vat)\b",
-    re.I,
-)
 _SYNONYMS = {
     "mmi": ("millionaire", "mind", "intensive"),
     "ql": ("quantum", "leap"),
@@ -83,10 +79,6 @@ def _allowed(url: str) -> bool:
     return parsed.scheme in {"http", "https"} and _host_ok(host)
 
 
-def _strip_prices(text: str) -> str:
-    return _PRICE_BITS.sub("[price omitted — use lookup_sheet]", text or "")
-
-
 def _download(url: str, limit: int = 2_000_000) -> str:
     req = Request(url, headers={"User-Agent": "sr-zendesk-ai-agent"})
     with urlopen(req, timeout=12) as resp:
@@ -111,7 +103,7 @@ def _parse_html(url: str, html: str) -> tuple[str, list[str]]:
 def fetch_page(url: str) -> tuple[str, list[str]]:
     html = _download(url)
     text, links = _parse_html(url, html)
-    return _strip_prices(text), links
+    return text, links
 
 
 def fetch_url(url: str) -> str:
@@ -124,7 +116,6 @@ def fetch_url(url: str) -> str:
     except URLError as exc:
         return f"ERROR: could not fetch page ({exc})"
     text, _ = _parse_html(raw, html)
-    text = _strip_prices(text)
     if len(text) < 40:
         return f"Fetched {raw} but almost no text was visible."
     return f"URL: {raw}\n{text[:4000]}"
@@ -157,7 +148,7 @@ def _rebuild_index() -> None:
             continue
         text, links = _parse_html(url, html)
         if len(text) >= 80:
-            pages.append((url, _strip_prices(text[:8000])))
+            pages.append((url, text[:8000]))
         ranked_links = sorted(
             links,
             key=lambda href: (0 if "millionairemind.live" in href else 1, href),

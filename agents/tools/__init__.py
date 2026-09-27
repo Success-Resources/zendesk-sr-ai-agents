@@ -32,11 +32,11 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
 
 3. fetch_url
    action_input: one https URL on the allowlist
-   Read that page. Prices on the page are stripped.
+   Read that page. Quote a Standard or VIP price only if that figure is written on the page.
 
 4. lookup_sheet
    action_input: programme and city, e.g. "Never Work Again" or "EWC food accommodation"
-   Live Google Sheets (Quinn = QL sheet, Maya = MMI sheet). If no_row, do not quote a price or date.
+   Live Google Sheets (Quinn = QL sheet, Maya = MMI sheet). If no_row, do not invent a price or date.
 
 5. lookup_registration / lookup_event_registration
    action_input: customer email plus the MMI city if they named one
@@ -46,7 +46,7 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
 6. lookup_links
    action_input: the ticket text (city/country if they named one)
    MMI registration (millionairemind.live), city factsheets (sr-event.com), Facebook groups, WhatsApp groups.
-   If the city/country is missing, ask for it. Do not invent a group or factsheet URL.
+   Ask which city only when they asked for that city's factsheet or group. Do not invent a URL.
 
 7. search_hub
    action_input: the customer question
