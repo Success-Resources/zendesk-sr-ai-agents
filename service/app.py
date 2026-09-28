@@ -81,7 +81,7 @@ def _brain_label() -> str:
 def _compose_generated_note(result) -> tuple[str, list[str], str]:
     if result.reason == "no_reply":
         return (
-            "No customer reply. This is an automated notification or a webinar chat note. Close the ticket.",
+            "No customer reply. This is an automated notification or a webinar chat note. Leave the status unchanged.",
             ["ai_draft_only", f"ai_{result.agent}", "ai_generated", "ai_no_reply"],
             "no_reply",
         )
@@ -94,7 +94,6 @@ def _compose_generated_note(result) -> tuple[str, list[str], str]:
     if result.needs_human:
         extra.append("needs_human")
     if result.email.strip() and not result.needs_human:
-        extra.append("ai_sendable")
         return result.email.strip() + footer, extra, "generated"
     if result.email.strip():
         return result.email.strip() + footer, extra, "generated_needs_human"
@@ -406,7 +405,13 @@ def post_ticket_update(
     extra_tags: list[str] | None = None,
     status: str | None = None,
     assignee_email: str | None = None,
+    allow_solve: bool = False,
 ) -> tuple[bool, str]:
+    # Testing: a public reply and Solved are allowed only for the test requester.
+    if not allow_solve:
+        public = False
+        if status == "solved":
+            status = None
     ticket: dict = {"comment": {"body": body, "public": public}}
     if extra_tags:
         ticket["additional_tags"] = extra_tags
@@ -493,16 +498,15 @@ def _draft_and_post(
         )
         requester = requester_email.strip().lower()
         disposition = "private_note"
-        if (
-            requester in _public_solve_emails()
-            and public_body
-            and matched.startswith("generated")
-        ):
+        # Only this address is solved during testing. Every other requester stays an internal note.
+        solve_for_test = requester in _public_solve_emails() and bool(public_body) and matched.startswith("generated")
+        if solve_for_test:
             posted, error = post_ticket_update(
                 ticket_id,
                 public_body,
                 public=True,
                 status="solved",
+                allow_solve=True,
                 extra_tags=["ai_generated", f"ai_{agent}", "ai_public_reply", "ai_solved"],
             )
             disposition = "public_solved"
