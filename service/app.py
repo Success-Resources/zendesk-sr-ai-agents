@@ -79,6 +79,12 @@ def _brain_label() -> str:
 
 
 def _compose_generated_note(result) -> tuple[str, list[str], str]:
+    if result.reason == "no_reply":
+        return (
+            "No customer reply. This is an automated notification or a webinar chat note. Close the ticket.",
+            ["ai_draft_only", f"ai_{result.agent}", "ai_generated", "ai_no_reply"],
+            "no_reply",
+        )
     extra = ["ai_draft_only", f"ai_{result.agent}", "ai_generated"]
     footer = (
         f"\n\n---\nStaff only — {result.agent.title()} wrote this with {_brain_label()}. "

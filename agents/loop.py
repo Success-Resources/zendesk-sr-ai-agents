@@ -31,6 +31,15 @@ _OVERVIEW = re.compile(
     r"what (?:will|do) (?:we|i) learn|what we will learn)\b",
     re.I,
 )
+_NO_REPLY = re.compile(
+    r"(summary of failures for google apps script|"
+    r"spreadsheet shared with you|"
+    r"your post has been published|"
+    r"\bpostiz\b|webinarkit|"
+    r"someone just sent you a new question during the webinar|"
+    r"to view this content, open the following url)",
+    re.I,
+)
 _FOLLOWUP = re.compile(
     r"^.*\b(flagged this|team member to confirm|get back to you|"
     r"which city would you like|let me know which city|could you let me know which)\b.*\n?",
@@ -286,7 +295,11 @@ def run_agent(
         ):
             email = _FOLLOWUP.sub("", email).strip()
             needs = False
-        if email.strip():
+        if _NO_REPLY.search(ticket):
+            email = ""
+            needs = False
+            reason = "no_reply"
+        elif email.strip():
             email = _apply_signature(email, agent)
         return AgentResult(
             agent=agent,

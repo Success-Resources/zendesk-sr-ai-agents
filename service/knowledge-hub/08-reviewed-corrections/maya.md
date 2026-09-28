@@ -1,8 +1,8 @@
 # Reviewed corrections — Maya
 
 **Owner agent:** Maya  
-**Source:** Ticket review sheet, all 262 tickets (111 incorrect, 108 partially correct, 43 correct)  
-**Entries:** 16
+**Source:** Ticket review sheet, including the Maya tab (122 checked: 31 already correct, 64 no reply, 27 to correct)  
+**Entries:** 25
 
 ## I need the team to check my booking before you answer
 
@@ -49,9 +49,11 @@ Hello,
 
 Thank you for your message.
 
-I’m checking the confirmed date, timetable, and venue details for your booking so that we do not send you outdated information.
+Give the venue and the city factsheet in this email. Do not say the address is missing, and do not offer to book a hotel.
 
-Please confirm the registration email and programme if they are not already included. We’ll send the verified event details as soon as they are available.
+Millionaire Mind Intensive Madrid, 25–27 September 2026, is at Novotel Madrid City Las Ventas. The address, schedule, and registration times are in the factsheet: https://sr-event.com/mad-factsheet
+
+For any other city, use the factsheet from lookup_links or the city page. If they also ask how many tickets are on the booking, or about access for a guest with reduced mobility, say registrations is checking that booking and will confirm in writing. Ask for a different purchase email only if they say the original purchase may have used another address.
 
 Kind regards,
 Success Resources Europe
@@ -67,11 +69,11 @@ Hello,
 
 Thank you for letting us know.
 
-We can review whether your ticket or programme can be moved to a future date.
+You can request a transfer here: https://sr-event.typeform.com/mmo-transfer
 
-Please confirm the purchase email address, ticket or order number, and the event you would prefer. The available options depend on the booking terms, package validity, payment status, and event availability.
+A VIP ticket, an unused VIP ticket, or a request to defer a VIP place uses this form instead: https://sr-event.typeform.com/to/ccysEJGM
 
-We will not change your current booking until the new arrangement is confirmed with you in writing.
+The team reviews the request and confirms the date and whether any extra charge applies. Nothing is changed until they agree in writing.
 
 Kind regards,
 Success Resources Europe
@@ -173,11 +175,13 @@ Hello,
 
 Thank you for your message.
 
-Replay availability depends on the specific programme and ticket type, so I’m checking the access terms for your booking rather than guessing.
+Recordings are not provided. Millionaire Mind Intensive and Millionaire Mind Hybrid are live, interactive programmes, and the exercises cannot be replaced by a recording.
 
-Please confirm the programme, event date, and purchase email address if they are not already in the thread. We’ll let you know whether a recording is included and how long it will remain available.
+You are welcome to join late, though each session builds on the one before it, so joining on time is better.
 
-Do not list future event dates unless they come from the live event list.
+If the timing does not work, request a transfer here: https://sr-event.typeform.com/mmo-transfer
+
+Hybrid runs in the event’s local time. There is not a separate session in US time. Do not guess a replay slot or another start time.
 
 Kind regards,
 Success Resources Europe
@@ -261,9 +265,9 @@ Success Resources Europe
 **Agent:** Maya  
 **Tag:** Escalate
 
-No customer reply is needed.
+No customer reply. Close the ticket.
 
-Classify this as an automated or misrouted notification (for example a script failure, a spreadsheet share, a vendor receipt, or a design-tool notification) and send it to the relevant internal owner only if action is required.
+This includes a webinar chat line that is not a question, a WebinarKit alert (check the live chat in that dashboard instead of emailing), a Google Apps Script failure summary, a “spreadsheet shared with you” notice, a Postiz or Instagram or Facebook “your post has been published” notice, and a Pinterest or other design-tool notification.
 
 A suspected phishing or password-reset email gets no reply. Do not click any links. Escalate it to the internal IT or security process.
 
@@ -286,7 +290,138 @@ We will check the payment, the applicable cancellation terms, and any previous a
 
 I don’t want to promise a refund or a payment date before that review is complete. If the refund is approved, processing is up to 45 working days. Money questions are finished by Rafa.
 
+If the ticket is already under refund review, do not send another customer email.
+
 Kind regards,
 Success Resources Europe
+
+---
+
+## The marketing email greeted me by the wrong name
+
+**Agent:** Maya  
+**Tag:** Universal
+
+Hello,
+
+Thank you for telling us. The greeting in that email was wrong, and that was our mistake.
+
+Use the name the customer signs with, or the requester name on the ticket. Never use the first name printed inside the marketing email they replied to. Do not guess who any other name in that email is.
+
+If you have any further questions about the event, reply and we will help.
+
+---
+
+## I cannot join a Zoom meeting that is not MMI
+
+**Agent:** Maya  
+**Tag:** Escalate
+
+Hello,
+
+Thank you for reaching out, and sorry the meeting would not let you in.
+
+This is not a Millionaire Mind Intensive access issue when the message is about another event, such as the SR Presenter Competition. Do not invent a Zoom meeting ID or password.
+
+Ask which event they were joining and which email they used to register, and pass that to the team who runs that event.
+
+---
+
+## How do I use the buy-one-get-one offer for two people
+
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for reaching out.
+
+Confirm the city and dates when they are already on the live event list. Do not guess the checkout quantity, whether a coupon code is required, or how the second person’s name is added.
+
+A colleague checks the current checkout and sends the confirmed steps. Ask them to wait to pay until that confirmation arrives if they are unsure.
+
+---
+
+## My email address has changed
+
+**Agent:** Maya  
+**Tag:** Universal
+
+Hello,
+
+Thank you for telling us. We have noted the new email address from your message and the team will update it for future messages.
+
+Do not ask which city they want unless they also asked an event question.
+
+---
+
+## Can I arrive on Saturday, and do I still need the cash
+
+**Agent:** Maya  
+**Tag:** Universal
+
+Hello,
+
+Thank you for reaching out.
+
+On-site registration is open on Saturday until 12:00 noon. After that, no new participants can be admitted. Joining from Friday is better, because the programme builds through the weekend and the foundations are on day one.
+
+The €100 cash is for a day-one activity. It is not needed if you join from Saturday.
+
+---
+
+## What time does each MMI day start and end
+
+**Agent:** Maya  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for reaching out.
+
+If the city factsheet states the hours, use those. Otherwise the in-person programme runs in local event time: Friday 9:00–21:00, Saturday 9:00–20:00, and Sunday 8:00–19:00. VIP speed networking starts Saturday at 8:00. Breaks can change, so arrive early.
+
+Do not say the timetable is unavailable when these hours or the factsheet already answer the question.
+
+---
+
+## Where is the hybrid workbook or Zoom link
+
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for reaching out.
+
+The digital workbook is here: https://sr-event.com/mmh-workbook
+
+The Zoom link is sent three days before the event. The subject line is: [IMPORTANT] Your Access Link to Millionaire Mind Hybrid 2026 Event!
+
+Ask them to check the inbox, spam, junk, and promotions. If it is still missing, ask for the registration email only when it is not already in the thread.
+
+---
+
+## Can I have a certificate of attendance
+
+**Agent:** Maya  
+**Tag:** Escalate
+
+No customer reply.
+
+A certificate question, including after a Train the Trainer or other non-MMI event, is escalated to the TTT team so the policy can be confirmed. Do not say a certificate will or will not be issued.
+
+---
+
+## I am interested in another programme mentioned on stage
+
+**Agent:** Maya  
+**Tag:** Escalate
+
+Hello,
+
+Thank you for your message. We are glad the session was useful.
+
+Your interest has been passed to the team who will send the details. Do not leave this ticket without a reply, and do not invent prices or dates for that programme.
 
 ---
