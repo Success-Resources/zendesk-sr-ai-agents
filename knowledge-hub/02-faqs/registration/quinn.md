@@ -126,3 +126,20 @@ All the best,
 Evelin
 
 ---
+
+## How do I register or redeem my Quantum Leap or programme ticket
+**Agent:** Quinn  
+**Tag:** Verify Eligibility
+
+Hello,
+
+Thank you for your message.
+
+I’m checking the correct registration or redemption route for your ticket.
+
+Please confirm the programme, preferred city and date, purchase email address, and any ticket or redemption code you received. We’ll verify eligibility and send the correct next step without changing your existing booking.
+
+Kind regards,
+Success Resources Europe
+
+---

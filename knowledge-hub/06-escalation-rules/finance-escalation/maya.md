@@ -49,9 +49,9 @@ Best regards,
 
 Hello,
 
-Thank you for your message. Refund requests may be considered if they are submitted within the applicable cooling-off period from the date of purchase: 14 working days for Europe events and 5 working days for Asia events. If your request is within this period, please send your registered and email.
+Thank you for your message. I have logged your refund request for verification. Please send the purchase email address and order or invoice number if they are not already in the thread.
 
-If your purchase is outside the cooling-off period, refunds are no longer available. However, you may transfer your ticket to another person or to a future event by submitting a transfer request using the link: https://sr-event.typeform.com/to/ccysEJGM
+We will check the payment and the cancellation terms that apply, including a 14-day window where the contract provides one. Do not say there is no cooling-off period, and do not say a refund is no longer available, before that check. Do not promise a refund. If a refund is approved, processing is up to 45 working days.
 
 Best regards,
 
@@ -67,7 +67,7 @@ Hello,
 
 Thank you for your message.
 
-Once your refund request has been approved, the refund is typically processed within 7–14 working days, depending on your bank or payment provider.
+If the refund is approved, processing is up to 45 working days. Finance confirms the payment before any transfer date. Do not promise an earlier date.
 
 If you have not received your refund after this period, please reply to this email and we will be happy to follow up for you.
 
@@ -85,7 +85,7 @@ Hello,
 
 Thank you for your message.
 
-We're sorry to hear that your refund request was not approved. If your request was submitted outside the applicable cooling-off period, it may not be eligible for a refund under our policy.
+I'm sorry this has been difficult. We cannot confirm that a refund is unavailable until Finance has checked the purchase date and the cancellation terms. Reply with the purchase email and order number if they are not already in the thread, and we will ask Finance to review the case.
 
 If you believe your case requires further review, please reply to this email with your registration details, and we'll be happy to review your case and escalate it to the relevant team if appropriate.
 

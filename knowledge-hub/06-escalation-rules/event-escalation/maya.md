@@ -24,3 +24,13 @@ Thank you for your patience and understanding.
 Kind regards,
 
 ---
+
+## Can I have a certificate of attendance
+**Agent:** Maya  
+**Tag:** Escalate
+
+No customer reply.
+
+A certificate question, including after a Train the Trainer or other non-MMI event, is escalated to the TTT team so the policy can be confirmed. Do not say a certificate will or will not be issued.
+
+---

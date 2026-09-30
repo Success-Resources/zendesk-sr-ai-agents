@@ -17,7 +17,7 @@ Hi [First Name],
 
 Thank you for reaching out.
 
-I understand this is important to you. Before a refund review, we would like to explore available alternatives such as another event date, transfer to another participant or a QL online downgrade. Refund approval cannot be confirmed in this message.
+I understand this is important to you. First confirm the purchase date so we know whether a cooling-off window still applies. Do not assume the cooling-off period has passed. Refund approval cannot be confirmed in this message. A transfer, another date, or a Quantum Leap downgrade is offered only after the booking is identified.
 
 If you have any further questions, please let me know - I am happy to help.
 

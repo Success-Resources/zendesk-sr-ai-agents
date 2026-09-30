@@ -46,3 +46,22 @@ If you still can't find your e-ticket, please reply with the email address you u
 Best regards,
 
 ---
+
+## I need the team to check my booking before you answer
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for your message.
+
+I want to make sure we give you accurate information. I’ve sent your enquiry to the relevant team for verification and will confirm the next step in writing.
+
+If your purchase details are not already included, please reply with the email used for the booking and your order or ticket number. Do not ask again for an email, receipt, or order number that is already in the thread.
+
+Do not include an exact date, link, price, availability claim, booking claim, or completed action unless that fact is already in the thread, the live city page, or this hub.
+
+Kind regards,
+Success Resources Europe
+
+---

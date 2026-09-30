@@ -17,7 +17,7 @@ Hello,
 
 Thank you for your question.
 
-No, recordings are not available. Millionaire Mind Intensive is designed as a live, interactive experience with exercises and activities that cannot be fully replicated through a recording.
+Replay availability depends on the programme and the ticket type. Check the access terms for this booking rather than guessing. Please confirm the programme, event date, and purchase email address if they are not already in the thread. Then say whether a recording is included and how long it remains available. Do not say that recordings are never provided unless that is already confirmed for this booking.
 
 We encourage all participants to attend as many sessions as possible to receive the full value of the programme.
 

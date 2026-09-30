@@ -15,9 +15,9 @@
 
 Hello,
 
-Thank you for your message. Refund requests may be considered if they are submitted within the applicable cooling-off period from the date of purchase: 14 working days for Europe events and 5 working days for Asia events. If your request is within this period, please send your registered and email.
+Thank you for your message. I have logged your refund request for verification. Please send the purchase email address and order or invoice number if they are not already in the thread.
 
-If your purchase is outside the cooling-off period, refunds are no longer available. However, you may transfer your ticket to another person or to a future event by submitting a transfer request using the link: https://sr-event.typeform.com/to/ccysEJGM
+We will check the payment and the cancellation terms that apply, including a 14-day window where the contract provides one. Do not say there is no cooling-off period, and do not say a refund is no longer available, before that check. Do not promise a refund. If a refund is approved, processing is up to 45 working days.
 
 Best regards,
 
@@ -33,7 +33,7 @@ Hello,
 
 Thank you for your message.
 
-Once your refund request has been approved, the refund is typically processed within 7–14 working days, depending on your bank or payment provider.
+If the refund is approved, processing is up to 45 working days. Finance confirms the payment before any transfer date. Do not promise an earlier date.
 
 If you have not received your refund after this period, please reply to this email and we will be happy to follow up for you.
 
@@ -51,7 +51,7 @@ Hello,
 
 Thank you for your message.
 
-We're sorry to hear that your refund request was not approved. If your request was submitted outside the applicable cooling-off period, it may not be eligible for a refund under our policy.
+I'm sorry this has been difficult. We cannot confirm that a refund is unavailable until Finance has checked the purchase date and the cancellation terms. Reply with the purchase email and order number if they are not already in the thread, and we will ask Finance to review the case.
 
 If you believe your case requires further review, please reply to this email with your registration details, and we'll be happy to review your case and escalate it to the relevant team if appropriate.
 
@@ -69,12 +69,37 @@ Hello,
 
 Thank you for your message.
 
-We're sorry to hear that you won't be able to attend. If you'd like to cancel your registration, please complete the form below:
+Thank you for your email. I confirm that we have received your cancellation request.
 
-https://sr-event.typeform.com/to/ccysEJGM
-
-Please note that refund eligibility depends on the applicable cooling-off period from your purchase date. If you are outside the cooling-off period, you may still request to transfer your ticket to another person or a future event.
+We will now verify the purchase date, programme, amount paid, and the cancellation terms that apply to your booking. Once this is confirmed, we will write to you with the cancellation status, any remaining-payment action, and the refund outcome. Approved refunds are processed within 45 working days. Do not say the cancellation is already complete, and do not say there is no cooling-off period.
 
 Best regards,
+
+---
+
+## I want a refund of my MMI ticket
+**Agent:** Maya  
+**Tag:** Finance Review
+
+Hello,
+
+Thank you for your message, and I’m sorry for the frustration this situation has caused.
+
+I have logged your refund request for verification. Please send the purchase email address and order or invoice number if they are not already in the thread.
+
+If they are cancelling, use this:
+
+Thank you for your email. I confirm that we have received your cancellation request.
+
+We will now verify the purchase date, programme, amount paid, and the cancellation terms that apply to your booking. Once this is confirmed, we will write to you with the cancellation status, any remaining-payment action, and the refund outcome. Approved refunds are processed within 45 working days.
+
+Do not say there is no cooling-off period. Do not say the cancellation is already complete. Do not quote an amount that is not already in the thread.
+
+I don’t want to promise a refund or a payment date before that review is complete. If the refund is approved, processing is up to 45 working days. Money questions are finished by Rafa.
+
+If the ticket is already under refund review, do not send another customer email.
+
+Kind regards,
+Success Resources Europe
 
 ---

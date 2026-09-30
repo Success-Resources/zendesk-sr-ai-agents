@@ -243,7 +243,7 @@ Hello,
 
 Thank you for your question.
 
-No, recordings are not available. Millionaire Mind Intensive is designed as a live, interactive experience with exercises and activities that cannot be fully replicated through a recording.
+Replay availability depends on the programme and the ticket type. Check the access terms for this booking rather than guessing. Please confirm the programme, event date, and purchase email address if they are not already in the thread. Then say whether a recording is included and how long it remains available. Do not say that recordings are never provided unless that is already confirmed for this booking.
 
 We encourage all participants to attend as many sessions as possible to receive the full value of the programme.
 
@@ -384,5 +384,103 @@ Thank you for your message.
 With Priority Check-In, VIP ticket holders have a dedicated check-in lane, allowing you to register and enter the event before Standard ticket holders. Please bring your photo ID and e-ticket, and follow the VIP Check-In signs at the registration area.
 
 Best regards,
+
+---
+
+## What is the date, timetable, or venue for my MMI booking
+**Agent:** Maya  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for your message.
+
+Give the venue and the city factsheet only when that factsheet or the live city page states them. Do not say the address is missing, and do not offer to book a hotel.
+
+Millionaire Mind Intensive Madrid, 25–27 September 2026, is at Novotel Madrid City Las Ventas. The address, schedule, and registration times are in the factsheet: https://sr-event.com/mad-factsheet
+
+For any other city, use the factsheet from lookup_links or the city page. If those details are not there, say: I’m checking the confirmed date, timetable, and venue details for your booking so that we do not send you outdated information. Please confirm the registration email and programme if they are not already included. We’ll send the verified event details as soon as they are available.
+
+If they also ask how many tickets are on the booking, or about access for a guest with reduced mobility, say registrations is checking that booking and will confirm in writing. Ask for a different purchase email only if they say the original purchase may have used another address.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## Is there translation or a headset at my MMI
+**Agent:** Maya  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for checking before the event.
+
+Translation availability can vary by programme, city, and date, so I’m confirming the language arrangements for your specific booking.
+
+Please send the purchase email address and event details if they are not already shown in the thread. We’ll reply with the confirmed translation options and any additional cost before you attend.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## We have one QR code for several guests
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Please come to the registration desk with your guests, your purchase receipt, and the QR code you received. The team will check the booking and assist with entry.
+
+We are also checking whether that single QR code covers every ticket. Do not promise that extra QR codes can be issued on the spot.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## Is there a replay or recording of the session
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for your message.
+
+Replay availability depends on the programme and the ticket type. Check the access terms for this booking rather than guessing. Please confirm the programme, event date, and purchase email address if they are not already in the thread. Then say whether a recording is included and how long it remains available.
+
+Do not say that a recording is included, or that recordings are never provided, unless that rule is already confirmed for this programme and ticket. Do not guess a replay slot or another start time. Hybrid runs in the event’s local time. There is not a separate session in US time.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## Can I arrive on Saturday, and do I still need the cash
+**Agent:** Maya  
+**Tag:** Universal
+
+Hello,
+
+Thank you for reaching out.
+
+On-site registration is open on Saturday until 12:00 noon. After that, no new participants can be admitted. Joining from Friday is better, because the programme builds through the weekend and the foundations are on day one.
+
+The €100 cash is for a day-one activity. It is not needed if you join from Saturday.
+
+---
+
+## What time does each MMI day start and end
+**Agent:** Maya  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for reaching out.
+
+If the city factsheet states the hours, use those. Otherwise the in-person programme runs in local event time: Friday 9:00–21:00, Saturday 9:00–20:00, and Sunday 8:00–19:00. VIP speed networking starts Saturday at 8:00. Breaks can change, so arrive early.
+
+Do not say the timetable is unavailable when these hours or the factsheet already answer the question.
 
 ---

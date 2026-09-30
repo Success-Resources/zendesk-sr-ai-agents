@@ -25,7 +25,7 @@ def search_hub(query: str, agent: str) -> str:
     lines.append(f"QUESTION: {entry.question}")
     lines.append(f"APPROVED EMAIL:\n{entry.email}")
     extras = []
-    for other in load_entries(agent, refresh=False)[:8]:
+    for other in load_entries(agent, refresh=False):
         if other.question != entry.question and query.lower()[:12] in other.question.lower():
             extras.append(other)
         if len(extras) >= 2:

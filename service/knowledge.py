@@ -253,6 +253,9 @@ def route_agent(tags: str, subject: str, description: str) -> str:
     return "maya"
 
 
+_MATCH_MIN = 0.18
+
+
 def best_match(agent: str, subject: str, description: str) -> tuple[Entry | None, float]:
     blob = _normalize(f"{subject} {description}")
     query = _tokens(blob)
@@ -299,7 +302,7 @@ def draft_note(tags: str, subject: str, description: str) -> tuple[str, str, str
     """Return agent, matched question, and the exact email staff should send."""
     agent = route_agent(tags, subject, description)
     entry, score = best_match(agent, subject, description)
-    if entry is None or score < 0.18:
+    if entry is None or score < _MATCH_MIN:
         body = (
             f"No close match in the GitHub knowledge hub ({agent.title()}, score {score:.2f}). "
             "A person should classify and reply. Do not invent a price or approve a refund."

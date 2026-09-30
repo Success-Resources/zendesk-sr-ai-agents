@@ -41,3 +41,34 @@ All the best,
 Evelin
 
 ---
+
+## Please unsubscribe me from marketing emails
+**Agent:** Quinn  
+**Tag:** Escalate
+
+Hello,
+
+The address on the Zendesk ticket is checked in ActiveCampaign and removed from every marketing list.
+
+When AC_UNSUB=ok or AC_UNSUB=already, send only a short confirmation that the ticket email was removed from marketing lists, and set needs_human false. Do not mention GDPR, data deletion, Ireland, or a data protection team, even if the customer asked for that in the same message.
+
+If AC_UNSUB=failed, skipped, or not_found, do not say it is done. Say a person will remove the address and set needs_human true.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## This email is an automated notification, not a customer question
+**Agent:** Quinn  
+**Tag:** Escalate
+
+No customer reply is needed.
+
+Classify this as an automated or misrouted notification and send it to the relevant internal owner only if action is required.
+
+A suspected phishing or password-reset email gets no reply. Do not click any links. Escalate it to the internal IT or security process.
+
+An unrelated missed call or robocall gets no reply. Close the ticket.
+
+---

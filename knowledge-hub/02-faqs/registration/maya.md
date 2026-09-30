@@ -178,3 +178,80 @@ You can still attend and fully participate in all sessions and activities during
 Best regards,
 
 ---
+
+## Can I use an unused VIP ticket or redemption code for another MMI
+**Agent:** Maya  
+**Tag:** Verify Eligibility
+
+Hello,
+
+Thank you for your message.
+
+I’m checking the correct registration or redemption route for your ticket.
+
+Please confirm the programme, preferred city and date, purchase email address, and any ticket or redemption code you received. We’ll verify eligibility and send the correct next step without changing your existing booking.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## A friend sent me an MMI invitation or redemption link
+**Agent:** Maya  
+**Tag:** Verify Eligibility
+
+Hello,
+
+Thank you for your message.
+
+I’d be happy to help you with the MMI invitation.
+
+Please send us the invitation or redemption link your friend received, together with your friend’s full name and the email connected to their booking. We’ll verify the invitation and send you the correct registration steps. Do not send a date or registration URL that has not been verified.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## My booking shows quantity 1 but it is for two people
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+If the thread already shows the booking is for two people, confirm that. A quantity shown as “1” can be a display issue and does not by itself reduce the booking to one ticket.
+
+Please send the second guest’s full name and email address. The MMI team will confirm how those details are added. Do not invent a self-serve process.
+
+Before confirming a guest registration, verify the number and type of tickets on the order. Ask for the purchase email, the order number, and the guest’s full name and email if they are not already in the thread. Confirm the booking and the guest steps in writing after that check.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## How do I use the buy-one-get-one offer for two people
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for reaching out.
+
+Confirm the city and dates when they are already on the live event list. Do not guess the checkout quantity, whether a coupon code is required, or how the second person’s name is added.
+
+A colleague checks the current checkout and sends the confirmed steps. Ask them to wait to pay until that confirmation arrives if they are unsure.
+
+---
+
+## My email address has changed
+**Agent:** Maya  
+**Tag:** Universal
+
+Hello,
+
+Thank you for telling us. We have noted the new email address from your message and the team will update it for future messages.
+
+Do not ask which city they want unless they also asked an event question.
+
+---
