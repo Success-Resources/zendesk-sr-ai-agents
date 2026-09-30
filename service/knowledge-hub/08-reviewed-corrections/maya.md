@@ -1,7 +1,7 @@
 # Reviewed corrections — Maya
 
 **Owner agent:** Maya  
-**Source:** Ticket review sheet, including the Maya tab (122 checked: 31 already correct, 64 no reply, 27 to correct)  
+**Source:** Tickets sheet, Maya only, columns Q–T (119 replies: 29 correct left unchanged, 69 partially correct, 21 incorrect)  
 **Entries:** 25
 
 ## I need the team to check my booking before you answer
@@ -17,6 +17,8 @@ I want to make sure we give you accurate information. I’ve sent your enquiry t
 
 If your purchase details are not already included, please reply with the email used for the booking and your order or ticket number. Do not ask again for an email, receipt, or order number that is already in the thread.
 
+Do not include an exact date, link, price, availability claim, booking claim, or completed action unless that fact is already in the thread, the live city page, or this hub.
+
 Kind regards,
 Success Resources Europe
 
@@ -31,7 +33,7 @@ Hello,
 
 Thank you for letting us know, and I’m sorry you’re having trouble accessing the event or materials.
 
-Please confirm the email used for registration, the programme name, and the event date. We’ll check your booking and send the correct access information, or escalate the technical issue urgently.
+Please confirm the email used for registration, the programme name, and the event date. We’ll check your booking and send the correct access information or escalate the technical issue urgently.
 
 Please do not use an unverified link.
 
@@ -49,11 +51,13 @@ Hello,
 
 Thank you for your message.
 
-Give the venue and the city factsheet in this email. Do not say the address is missing, and do not offer to book a hotel.
+Give the venue and the city factsheet only when that factsheet or the live city page states them. Do not say the address is missing, and do not offer to book a hotel.
 
 Millionaire Mind Intensive Madrid, 25–27 September 2026, is at Novotel Madrid City Las Ventas. The address, schedule, and registration times are in the factsheet: https://sr-event.com/mad-factsheet
 
-For any other city, use the factsheet from lookup_links or the city page. If they also ask how many tickets are on the booking, or about access for a guest with reduced mobility, say registrations is checking that booking and will confirm in writing. Ask for a different purchase email only if they say the original purchase may have used another address.
+For any other city, use the factsheet from lookup_links or the city page. If those details are not there, say: I’m checking the confirmed date, timetable, and venue details for your booking so that we do not send you outdated information. Please confirm the registration email and programme if they are not already included. We’ll send the verified event details as soon as they are available.
+
+If they also ask how many tickets are on the booking, or about access for a guest with reduced mobility, say registrations is checking that booking and will confirm in writing. Ask for a different purchase email only if they say the original purchase may have used another address.
 
 Kind regards,
 Success Resources Europe
@@ -67,13 +71,11 @@ Success Resources Europe
 
 Hello,
 
-Thank you for letting us know.
+Thank you for letting us know. We can review whether your ticket or programme can be moved to a future date.
 
-You can request a transfer here: https://sr-event.typeform.com/mmo-transfer
+Please confirm the purchase email address, ticket or order number, and the event you would prefer. The available options depend on the booking terms, package validity, payment status, and event availability.
 
-A VIP ticket, an unused VIP ticket, or a request to defer a VIP place uses this form instead: https://sr-event.typeform.com/to/ccysEJGM
-
-The team reviews the request and confirms the date and whether any extra charge applies. Nothing is changed until they agree in writing.
+We will not change your current booking until the new arrangement is confirmed with you in writing. Do not send a transfer link unless that route is already confirmed for this booking.
 
 Kind regards,
 Success Resources Europe
@@ -145,6 +147,8 @@ If the thread already shows the booking is for two people, confirm that. A quant
 
 Please send the second guest’s full name and email address. The MMI team will confirm how those details are added. Do not invent a self-serve process.
 
+Before confirming a guest registration, verify the number and type of tickets on the order. Ask for the purchase email, the order number, and the guest’s full name and email if they are not already in the thread. Confirm the booking and the guest steps in writing after that check.
+
 Kind regards,
 Success Resources Europe
 
@@ -175,13 +179,9 @@ Hello,
 
 Thank you for your message.
 
-Recordings are not provided. Millionaire Mind Intensive and Millionaire Mind Hybrid are live, interactive programmes, and the exercises cannot be replaced by a recording.
+Replay availability depends on the programme and the ticket type. Check the access terms for this booking rather than guessing. Please confirm the programme, event date, and purchase email address if they are not already in the thread. Then say whether a recording is included and how long it remains available.
 
-You are welcome to join late, though each session builds on the one before it, so joining on time is better.
-
-If the timing does not work, request a transfer here: https://sr-event.typeform.com/mmo-transfer
-
-Hybrid runs in the event’s local time. There is not a separate session in US time. Do not guess a replay slot or another start time.
+Do not say that a recording is included, or that recordings are never provided, unless that rule is already confirmed for this programme and ticket. Do not guess a replay slot or another start time. Hybrid runs in the event’s local time. There is not a separate session in US time.
 
 Kind regards,
 Success Resources Europe
@@ -229,13 +229,13 @@ Success Resources Europe
 
 Hello,
 
-The email address on this ticket has been unsubscribed from our marketing lists and will no longer receive promotional emails from us.
+I’m sorry you continued to receive messages after trying to unsubscribe. I’ve forwarded your email address for removal from the relevant marketing list.
 
-If another promotional email arrives, forward it to us and we will check that list.
+Please allow the system time to update. If you receive another promotional email after the update, reply with a copy so we can identify the remaining list.
 
-When AC_UNSUB=ok or AC_UNSUB=already, send only this confirmation and set needs_human false. Do not mention GDPR, data deletion, Ireland, or a data protection team, even if the customer asked for that in the same message.
+Say the ticket email has already been removed only when AC_UNSUB=ok or AC_UNSUB=already, and set needs_human false. Do not mention GDPR, data deletion, Ireland, or a data protection team, even if the customer asked for that in the same message.
 
-If AC_UNSUB=failed, skipped, or not_found, do not say it is done. Say a person will remove the address and set needs_human true.
+If AC_UNSUB=failed, skipped, or not_found, do not say it is done. Use the wording above and set needs_human true.
 
 Kind regards,
 Success Resources Europe
@@ -265,13 +265,13 @@ Success Resources Europe
 **Agent:** Maya  
 **Tag:** Escalate
 
-No customer reply. Close the ticket.
+No customer reply is needed. Leave the status unchanged.
 
-This includes a webinar chat line that is not a question, a WebinarKit alert (check the live chat in that dashboard instead of emailing), a Google Apps Script failure summary, a “spreadsheet shared with you” notice, a Postiz or Instagram or Facebook “your post has been published” notice, and a Pinterest or other design-tool notification.
+Classify this as an automated or misrouted notification and send it to the relevant internal owner only if action is required. This includes a webinar chat line that is not a question, a WebinarKit alert (check the live chat in that dashboard instead of emailing), a Google Apps Script failure summary, a “spreadsheet shared with you” notice, a Postiz or Instagram or Facebook “your post has been published” notice, and a Pinterest or other design-tool notification.
 
 A suspected phishing or password-reset email gets no reply. Do not click any links. Escalate it to the internal IT or security process.
 
-An unrelated missed call or robocall gets no reply. Close the ticket.
+An unrelated missed call or robocall gets no reply.
 
 ---
 
@@ -286,7 +286,13 @@ Thank you for your message, and I’m sorry for the frustration this situation h
 
 I have logged your refund request for verification. Please send the purchase email address and order or invoice number if they are not already in the thread.
 
-We will check the payment, the applicable cancellation terms, and any previous approval before confirming the outcome. Do not say there is no cooling-off period. The purchase date is checked against the cancellation terms, including a 14-day window where that applies.
+If they are cancelling, use this:
+
+Thank you for your email. I confirm that we have received your cancellation request.
+
+We will now verify the purchase date, programme, amount paid, and the cancellation terms that apply to your booking. Once this is confirmed, we will write to you with the cancellation status, any remaining-payment action, and the refund outcome. Approved refunds are processed within 45 working days.
+
+Do not say there is no cooling-off period. Do not say the cancellation is already complete. Do not quote an amount that is not already in the thread.
 
 I don’t want to promise a refund or a payment date before that review is complete. If the refund is approved, processing is up to 45 working days. Money questions are finished by Rafa.
 
