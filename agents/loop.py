@@ -116,13 +116,46 @@ def _apply_signature(email: str, agent: str) -> str:
     return f"{text}\n\nWarm regards,\n{name}\nSuccess Resources Support"
 
 
+_BOILERPLATE = re.compile(
+    r"(view (?:this )?email in your browser|"
+    r"having trouble viewing|"
+    r"view in (?:your )?browser|"
+    r"you(?:'re| are) receiving this (?:email|message)|"
+    r"click here to unsubscribe|"
+    r"unsubscribe from (?:this|our)|"
+    r"manage (?:your )?preferences|"
+    r"if you no longer wish to receive)",
+    re.I,
+)
+
+
+def _customer_words(description: str) -> str:
+    """The customer's own text, without a quoted thread or a marketing template."""
+    body = _QUOTE.split(description or "", maxsplit=1)[0]
+    body = re.sub(r"(?is)\n\s*sent to:.*$", "", body)
+    cut = _BOILERPLATE.search(body)
+    if cut:
+        body = body[: cut.start()]
+    return body.strip()
+
+
 def asks_unsubscribe(subject: str, description: str) -> bool:
     """True when the customer asked to stop marketing mail, not a footer in a quote."""
     if _UNSUB.search(subject or ""):
         return True
-    body = _QUOTE.split(description or "", maxsplit=1)[0]
-    body = re.sub(r"(?is)\n\s*sent to:.*$", "", body)
-    return bool(_UNSUB.search(body[:1500]))
+    return bool(_UNSUB.search(_customer_words(description)[:1500]))
+
+
+def is_marketing_or_automated(subject: str, description: str) -> bool:
+    """Inbound campaign or system mail. Not a person asking to unsubscribe."""
+    blob = f"{subject}\n{description}"
+    if _NO_REPLY.search(blob):
+        return True
+    if asks_unsubscribe(subject, description):
+        return False
+    if _BOILERPLATE.search(description or "") and len(_customer_words(description)) < 80:
+        return True
+    return False
 
 
 def _prefetch(
@@ -189,6 +222,15 @@ def run_agent(
     agent = (agent or "maya").lower()
     if agent not in {"maya", "quinn", "rafa"}:
         agent = "maya"
+    if agent == "maya" and is_marketing_or_automated(subject, description):
+        return AgentResult(
+            agent=agent,
+            email="",
+            needs_human=False,
+            confidence=1.0,
+            reason="no_reply",
+            trace=["marketing or automated mail: close solved, no customer reply"],
+        )
     live, tools_used = _prefetch(agent, subject, description, requester_email, requester_name)
     system = _persona(agent) + "\n" + TOOL_DOCS
     user = (

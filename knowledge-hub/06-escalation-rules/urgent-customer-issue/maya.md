@@ -142,7 +142,7 @@ Success Resources Europe
 **Agent:** Maya  
 **Tag:** Escalate
 
-No customer reply is needed. Leave the status unchanged.
+No customer reply is needed. Close the ticket as solved.
 
 Classify this as an automated or misrouted notification and send it to the relevant internal owner only if action is required. This includes a webinar chat line that is not a question, a WebinarKit alert (check the live chat in that dashboard instead of emailing), a Google Apps Script failure summary, a “spreadsheet shared with you” notice, a Postiz or Instagram or Facebook “your post has been published” notice, and a Pinterest or other design-tool notification.
 

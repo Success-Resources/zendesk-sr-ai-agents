@@ -1,11 +1,13 @@
-"""Zendesk webhook → Maya/Quinn/Rafa draft → private note, or a public solved reply in test.
+"""Zendesk webhook → Maya/Quinn/Rafa draft.
 
-AGENT_BACKEND=matcher  copy closest GitHub email (Vercel Hobby)
-AGENT_BACKEND=claude   generate with Claude API + hub/site/sheet tools (remote)
-AGENT_BACKEND=ollama   local laptop test only
+Maya is live: a public reply and status solved, except marketing or automated
+mail, which is solved with no reply. Unsubscribe still removes the ticket
+email in ActiveCampaign. A missing confirmation still checks the registration
+sheet and retriggers that city's tag.
 
-Test stage: requesters in ZENDESK_PUBLIC_SOLVE_EMAILS get a public reply and status solved.
-Anyone who asks to speak to a person is assigned to ZENDESK_HUMAN_ASSIGNEE_EMAIL instead.
+Quinn and Rafa stay in test: a private note, unless the requester is in
+ZENDESK_PUBLIC_SOLVE_EMAILS. Anyone who asks to speak to a person is assigned
+to ZENDESK_HUMAN_ASSIGNEE_EMAIL instead.
 """
 
 from __future__ import annotations
@@ -435,6 +437,14 @@ def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None =
     return post_ticket_update(ticket_id, body, public=False, extra_tags=extra_tags)
 
 
+def solve_without_reply(ticket_id: str, extra_tags: list[str] | None = None) -> tuple[bool, str]:
+    """Close as solved and do not add a comment."""
+    ticket: dict = {"status": "solved"}
+    if extra_tags:
+        ticket["additional_tags"] = extra_tags
+    return _put_ticket(ticket_id, ticket)
+
+
 def _build_draft(
     tags: str,
     subject: str,
@@ -498,9 +508,22 @@ def _draft_and_post(
         )
         requester = requester_email.strip().lower()
         disposition = "private_note"
-        # Only this address is solved during testing. Every other requester stays an internal note.
-        solve_for_test = requester in _public_solve_emails() and bool(public_body) and matched.startswith("generated")
-        if solve_for_test:
+        maya_live = agent == "maya"
+        # Quinn and Rafa stay private except for the test requester. Maya replies in public.
+        solve_public = (
+            bool(public_body)
+            and matched.startswith("generated")
+            and (maya_live or requester in _public_solve_emails())
+        )
+        if maya_live and matched == "no_reply":
+            posted, error = solve_without_reply(
+                ticket_id,
+                ["ai_generated", "ai_maya", "ai_no_reply", "ai_solved"],
+            )
+            disposition = "solved_no_reply"
+            if not posted:
+                _release_ticket(ticket_id)
+        elif solve_public:
             posted, error = post_ticket_update(
                 ticket_id,
                 public_body,
@@ -569,6 +592,7 @@ def health() -> dict:
             and (os.getenv("ACTIVECAMPAIGN_API_TOKEN") or os.getenv("AC_API_TOKEN") or "").strip()
         ),
         "agent_actions": (os.getenv("AGENT_ACTIONS") or "propose").strip().lower(),
+        "maya_live": True,
         "public_solve_emails": sorted(_public_solve_emails()),
         "human_assignee_email": _human_assignee_email(),
         "mmi_event_sheets": _event_sheet_codes(),
