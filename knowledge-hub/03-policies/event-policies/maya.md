@@ -17,7 +17,7 @@ Hello,
 
 Thank you for your question.
 
-Replay availability depends on the programme and the ticket type. Check the access terms for this booking rather than guessing. Please confirm the programme, event date, and purchase email address if they are not already in the thread. Then say whether a recording is included and how long it remains available. Do not say that recordings are never provided unless that is already confirmed for this booking.
+Millionaire Mind Intensive, Millionaire Mind Hybrid, and Quantum Leap do not include recordings or replays. Do not say one might be included. SRV programmes may offer recordings through a subscription; do not apply that rule to MMI, MMH, or QL.
 
 We encourage all participants to attend as many sessions as possible to receive the full value of the programme.
 
@@ -53,7 +53,7 @@ Hello,
 
 Thank you for your message.
 
-In the unlikely event that an event is cancelled or postponed, all registered participants will be notified by email as soon as possible. You will be offered the available options, which may include transferring your ticket to a new event date or receiving a full refund.
+If an event is cancelled or postponed, registered participants are notified by email. Offer a transfer to another MMI date or location, or a transfer to another person. Do not say the ticket receives a full refund.
 
 Please make sure your registration email address is correct so you can receive any important updates.
 

@@ -567,7 +567,7 @@ Hello,
 
 Thank you for your enquiry.
 
-The Millionaire Mind Intensive is designed as a personal development programme. A certificate of attendance is not included as part of the programme.
+The Millionaire Mind Intensive does not include a certificate of attendance. Say that. Do not escalate this to the Train the Trainer team, and do not use TTT certificate rules in an MMI reply. A ticket that is actually about TTT belongs to Quinn.
 
 If you have any further questions about the event, please feel free to let us know.
 

@@ -29,8 +29,8 @@ Kind regards,
 **Agent:** Maya  
 **Tag:** Escalate
 
-No customer reply.
+Thank you for your message.
 
-A certificate question, including after a Train the Trainer or other non-MMI event, is escalated to the TTT team so the policy can be confirmed. Do not say a certificate will or will not be issued.
+The Millionaire Mind Intensive does not include a certificate of attendance. Do not escalate an MMI certificate question to the Train the Trainer team, and do not use TTT certificate rules here. A ticket that is actually about TTT belongs to Quinn.
 
 ---

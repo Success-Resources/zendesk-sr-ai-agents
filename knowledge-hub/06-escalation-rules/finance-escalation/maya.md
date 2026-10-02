@@ -49,9 +49,11 @@ Best regards,
 
 Hello,
 
-Thank you for your message. I have logged your refund request for verification. Please send the purchase email address and order or invoice number if they are not already in the thread.
+Thank you for your message. I understand, and I am sorry this has been difficult.
 
-We will check the payment and the cancellation terms that apply, including a 14-day window where the contract provides one. Do not say there is no cooling-off period, and do not say a refund is no longer available, before that check. Do not promise a refund. If a refund is approved, processing is up to 45 working days.
+Before a refund is discussed, we can move your MMI ticket to another MMI date or location, or transfer it to another person. Please tell us which option you prefer. If the purchase email and order number are not already in this thread, please send those too. Nothing changes until we confirm it with you in writing.
+
+Do not approve a refund. Do not mention a 14-day window, a processing time such as 45 days, or a full refund. Do not say money will be paid. If they still want a refund after those options, say the team will review the request and do not state an outcome.
 
 Best regards,
 
@@ -67,9 +69,7 @@ Hello,
 
 Thank you for your message.
 
-If the refund is approved, processing is up to 45 working days. Finance confirms the payment before any transfer date. Do not promise an earlier date.
-
-If you have not received your refund after this period, please reply to this email and we will be happy to follow up for you.
+Do not give a processing time. If a transfer to another MMI date, location, or person has not been offered yet, offer that first. If a refund is already under review, say it is with the team and do not quote a number of days.
 
 Best regards,
 
@@ -85,7 +85,7 @@ Hello,
 
 Thank you for your message.
 
-I'm sorry this has been difficult. We cannot confirm that a refund is unavailable until Finance has checked the purchase date and the cancellation terms. Reply with the purchase email and order number if they are not already in the thread, and we will ask Finance to review the case.
+I am sorry this has been difficult. We can move your MMI ticket to another MMI date or location, or transfer it to another person. Do not say a refund was refused, and do not quote refund timings.
 
 If you believe your case requires further review, please reply to this email with your registration details, and we'll be happy to review your case and escalate it to the relevant team if appropriate.
 

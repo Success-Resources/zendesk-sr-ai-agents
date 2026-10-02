@@ -134,9 +134,7 @@ Hello,
 
 Thank you for your enquiry.
 
-To help participants gain the most from the programme, we recommend the event for individuals aged 15 years and above.
-
-Younger children may attend, provided their presence does not disrupt the learning environment for other participants.
+For Millionaire Mind Intensive, no participants under 12. For Quantum Leap programmes, no participants under 18.
 
 Kind regards,
 
@@ -152,9 +150,7 @@ Hello,
 
 Thank you for your question.
 
-Teenagers aged 15 and above are welcome to attend and often find the programme highly valuable.
-
-Younger children may also attend, provided they do not disrupt the sessions. We recommend considering whether the programme content is suitable for their age and ensuring they can participate respectfully throughout the event.
+For Millionaire Mind Intensive, no participants under 12. A child under 12 cannot attend. For Quantum Leap programmes, no participants under 18.
 
 Best regards,
 
@@ -206,7 +202,7 @@ Hello,
 
 Thank you for your question.
 
-If you miss a day, you're still welcome to attend the remaining days of the programme. Please note that registration remains open until 12:00 PM on Saturday.
+If you miss a day, you're still welcome to attend the remaining days of the programme. On-site registration is officially open on Friday only, starting at 8:00 AM. A participant who arrives very early on Saturday morning can be an exception. Do not say registration stays open until 12:00 noon.
 
 However, MMI is designed as a progressive 3-day experience, with each session building on the previous one. Missing part of the programme may affect your understanding and experience of the later sessions.
 
@@ -243,7 +239,7 @@ Hello,
 
 Thank you for your question.
 
-Replay availability depends on the programme and the ticket type. Check the access terms for this booking rather than guessing. Please confirm the programme, event date, and purchase email address if they are not already in the thread. Then say whether a recording is included and how long it remains available. Do not say that recordings are never provided unless that is already confirmed for this booking.
+Millionaire Mind Intensive, Millionaire Mind Hybrid, and Quantum Leap do not include recordings or replays. Do not say one might be included. SRV programmes may offer recordings through a subscription; do not apply that rule to MMI, MMH, or QL.
 
 We encourage all participants to attend as many sessions as possible to receive the full value of the programme.
 
@@ -395,11 +391,9 @@ Hello,
 
 Thank you for your message.
 
-Give the venue and the city factsheet only when that factsheet or the live city page states them. Do not say the address is missing, and do not offer to book a hotel.
+Do not hard-code a city, date, or venue. Take the date from LIVE UPCOMING EVENTS, the live city page, or the event sheet. Send a factsheet from lookup_links only for the city they named, and only state a venue when that live page states it.
 
-Millionaire Mind Intensive Madrid, 25–27 September 2026, is at Novotel Madrid City Las Ventas. The address, schedule, and registration times are in the factsheet: https://sr-event.com/mad-factsheet
-
-For any other city, use the factsheet from lookup_links or the city page. If those details are not there, say: I’m checking the confirmed date, timetable, and venue details for your booking so that we do not send you outdated information. Please confirm the registration email and programme if they are not already included. We’ll send the verified event details as soon as they are available.
+If those sources do not list the date or venue, say: I’m checking the confirmed date, timetable, and venue details for your booking so that we do not send you outdated information. Please confirm the registration email and programme if they are not already included. We’ll send the verified event details as soon as they are available.
 
 If they also ask how many tickets are on the booking, or about access for a guest with reduced mobility, say registrations is checking that booking and will confirm in writing. Ask for a different purchase email only if they say the original purchase may have used another address.
 
@@ -448,9 +442,9 @@ Hello,
 
 Thank you for your message.
 
-Replay availability depends on the programme and the ticket type. Check the access terms for this booking rather than guessing. Please confirm the programme, event date, and purchase email address if they are not already in the thread. Then say whether a recording is included and how long it remains available.
+Millionaire Mind Intensive, Millionaire Mind Hybrid, and Quantum Leap do not include recordings or replays. Do not say one might be included. SRV programmes may offer recordings through a subscription; do not apply that rule to MMI, MMH, or QL.
 
-Do not say that a recording is included, or that recordings are never provided, unless that rule is already confirmed for this programme and ticket. Do not guess a replay slot or another start time. Hybrid runs in the event’s local time. There is not a separate session in US time.
+Do not guess a replay slot or another start time. Hybrid runs in the event’s local time. There is not a separate session in US time.
 
 Kind regards,
 Success Resources Europe
@@ -465,7 +459,7 @@ Hello,
 
 Thank you for reaching out.
 
-On-site registration is open on Saturday until 12:00 noon. After that, no new participants can be admitted. Joining from Friday is better, because the programme builds through the weekend and the foundations are on day one.
+On-site registration starts at 8:00 AM on Friday and is officially open on Friday only. A participant who arrives very early on Saturday morning can be an exception. Do not say registration stays open until 12:00 noon. Joining from Friday is better, because the programme builds through the weekend and the foundations are on day one.
 
 The €100 cash is for a day-one activity. It is not needed if you join from Saturday.
 

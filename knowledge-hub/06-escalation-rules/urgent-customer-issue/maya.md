@@ -125,9 +125,9 @@ Kind regards,
 
 Hello,
 
-I’m sorry you continued to receive messages after trying to unsubscribe. I’ve forwarded your email address for removal from the relevant marketing list.
+If you are registered for an event, unsubscribing means you may no longer receive important updates about that event. You can unsubscribe yourself with the Unsubscribe link at the bottom of each email.
 
-Please allow the system time to update. If you receive another promotional email after the update, reply with a copy so we can identify the remaining list.
+If you still want this address removed from marketing mail, I have forwarded it for removal from the relevant marketing list. Please allow the system time to update. If you receive another promotional email after the update, reply with a copy so we can identify the remaining list.
 
 Say the ticket email has already been removed only when AC_UNSUB=ok or AC_UNSUB=already, and set needs_human false. Do not mention GDPR, data deletion, Ireland, or a data protection team, even if the customer asked for that in the same message.
 

@@ -55,7 +55,7 @@ Thank you for your question.
 
 Online registration closes before the event begins.
 
-If you wish to register on-site, registration is available on Friday and Saturday until 12:00 PM (noon). After 12:00 PM on Saturday, no new registrations will be accepted.
+On-site registration starts at 8:00 AM on Friday and is officially open on Friday only. A participant who arrives very early on Saturday morning can be an exception. Do not say registration stays open until 12:00 noon.
 
 We recommend registering early to secure your preferred ticket type and any available promotional pricing.
 
@@ -73,7 +73,7 @@ Hello,
 
 Thank you for your question.
 
-Yes, you can register on Saturday. On-site registration is available until 12:00 PM (noon). After that time, no new participants will be admitted.
+On-site registration is officially open on Friday only, starting at 8:00 AM. We can make an exception for a participant who arrives very early on Saturday morning. Do not say registration stays open until 12:00 noon.
 
 We strongly recommend attending from Friday, as the programme is designed to build progressively over all three days, and many important lessons begin on Day 1.
 
@@ -91,7 +91,7 @@ Hello,
 
 Thank you for your question.
 
-On Friday, on-site registration is open from 7:45 AM to 8:45 AM, before the programme begins at 9:00 AM.
+On-site registration starts at 8:00 AM on Friday and is officially open on Friday only. A participant who arrives very early on Saturday morning can be an exception. Do not use a 7:45 AM opening time, and do not say registration stays open until 12:00 noon.
 
 For VIP participants, the Speed Networking Session begins at 8:00 AM on Saturday.
 
