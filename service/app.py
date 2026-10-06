@@ -46,9 +46,14 @@ app = FastAPI(title="SR Zendesk AI")
 _draft_lock = threading.Lock()
 _claimed_tickets: set[str] = set()
 _AI_DRAFT_TAGS = frozenset(
-    {"ai_draft_only", "ai_generated", "ai_matcher_fallback", "ai_assigned_human"}
+    {"ai_draft_only", "ai_generated", "ai_matcher_fallback", "ai_assigned_human", "ai_skipped_srv"}
 )
 _DEFAULT_TEST_EMAIL = "akram.r@srglobal.com"
+_SRV_MAILBOX = "srv@srglobal.com"
+_MMO_MAILBOX = "mmo@srglobal.com"
+_MMI_ASSIGNEE = "meda.c@srglobal.com"
+_MMO_ASSIGNEE = "alina.last@srglobal.com"
+_MAILBOX = re.compile(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}", re.I)
 _HUMAN_REQUEST = re.compile(
     r"\b("
     r"(?:talk|speak|chat) (?:to|with) (?:a |an )?(?:real )?(?:human(?: being)?|person)"
@@ -128,9 +133,37 @@ def _public_solve_emails() -> set[str]:
 
 def _human_assignee_email() -> str:
     raw = os.getenv("ZENDESK_HUMAN_ASSIGNEE_EMAIL")
-    if raw is None:
-        return _DEFAULT_TEST_EMAIL
+    if raw is None or not raw.strip():
+        return _MMI_ASSIGNEE
     return raw.strip().lower()
+
+
+def _one_email(env_name: str, default: str) -> str:
+    raw = os.getenv(env_name)
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower()
+
+
+def _mailbox_address(value: str) -> str:
+    match = _MAILBOX.search(value or "")
+    return match.group(0).lower() if match else ""
+
+
+def maya_lane(recipient: str) -> str:
+    """srv is ignored. mmo@ goes to the MMO lane. Everything else Maya handles is MMI."""
+    box = _mailbox_address(recipient)
+    if box == _SRV_MAILBOX:
+        return "srv"
+    if box == _MMO_MAILBOX:
+        return "mmo"
+    return "mmi"
+
+
+def maya_human_assignee(lane: str) -> str:
+    if lane == "mmo":
+        return _one_email("ZENDESK_MMO_ASSIGNEE_EMAIL", _MMO_ASSIGNEE)
+    return _one_email("ZENDESK_MMI_ASSIGNEE_EMAIL", _MMI_ASSIGNEE)
 
 
 def asks_for_human(subject: str, description: str, *, full: bool = False) -> bool:
@@ -275,12 +308,31 @@ def _ticket_status(ticket_id: str) -> str:
     return str(((data or {}).get("ticket") or {}).get("status") or "")
 
 
-def assign_open_for_human(ticket_id: str, hinted_comment: str = "") -> bool:
-    """Reopen and assign when the requester asks for a person. No comment is added."""
-    if not asks_for_human("", hinted_comment, full=True) and not _comments_ask_for_human(ticket_id):
+def fetch_ticket_recipient(ticket_id: str) -> str:
+    data = _zendesk_get(f"tickets/{ticket_id}.json")
+    return str(((data or {}).get("ticket") or {}).get("recipient") or "")
+
+
+def skip_srv_ticket(ticket_id: str) -> None:
+    """Leave SRV mail for the team. Maya does not reply or get assigned."""
+    if "ai_skipped_srv" in set(fetch_ticket_tags(ticket_id)):
+        log.info("srv already skipped ticket_id=%s", ticket_id)
+        return
+    ok, detail = _put_ticket(ticket_id, {"additional_tags": ["ai_skipped_srv"]})
+    log.info("srv skipped ticket_id=%s ok=%s detail=%s", ticket_id, ok, detail)
+
+
+def assign_open_for_human(
+    ticket_id: str,
+    hinted_comment: str = "",
+    assignee_email: str | None = None,
+    force: bool = False,
+) -> bool:
+    """Reopen and assign. No comment is added."""
+    if not force and not asks_for_human("", hinted_comment, full=True) and not _comments_ask_for_human(ticket_id):
         log.info("human handoff no match ticket_id=%s hint_len=%s", ticket_id, len(hinted_comment or ""))
         return False
-    assignee = _human_assignee_email()
+    assignee = (assignee_email or _human_assignee_email()).strip().lower()
     if assignee and _already_open_for(ticket_id, assignee):
         log.info("human handoff already open ticket_id=%s", ticket_id)
         return True
@@ -483,6 +535,16 @@ def _build_draft(
     return agent, matched, extra, note_body, ""
 
 
+def _follow_up(ticket_id: str, latest_comment: str, recipient: str = "") -> None:
+    if not recipient.strip():
+        recipient = fetch_ticket_recipient(ticket_id)
+    lane = maya_lane(recipient)
+    if lane == "srv":
+        skip_srv_ticket(ticket_id)
+        return
+    assign_open_for_human(ticket_id, latest_comment, maya_human_assignee(lane))
+
+
 def _draft_and_post(
     ticket_id: str,
     subject: str,
@@ -491,10 +553,24 @@ def _draft_and_post(
     requester_name: str,
     requester_email: str = "",
     latest_comment: str = "",
+    recipient: str = "",
 ) -> None:
     try:
-        if assign_open_for_human(ticket_id, latest_comment):
-            log.info("human handoff only ticket_id=%s", ticket_id)
+        if not recipient.strip():
+            recipient = fetch_ticket_recipient(ticket_id)
+        lane = maya_lane(recipient)
+        if lane == "srv":
+            skip_srv_ticket(ticket_id)
+            _release_ticket(ticket_id)
+            return
+        agent_guess = route_agent(str(tags), str(subject), str(description))
+        handoff_to = (
+            maya_human_assignee(lane)
+            if agent_guess == "maya" or lane == "mmo"
+            else _human_assignee_email()
+        )
+        if assign_open_for_human(ticket_id, latest_comment, handoff_to):
+            log.info("human handoff only ticket_id=%s lane=%s assignee=%s", ticket_id, lane, handoff_to)
             _release_ticket(ticket_id)
             return
         live_tags = fetch_ticket_tags(ticket_id)
@@ -512,7 +588,7 @@ def _draft_and_post(
         # Quinn and Rafa stay private except for the test requester. Maya replies in public.
         solve_public = (
             bool(public_body)
-            and matched.startswith("generated")
+            and matched == "generated"
             and (maya_live or requester in _public_solve_emails())
         )
         if maya_live and matched == "no_reply":
@@ -521,6 +597,12 @@ def _draft_and_post(
                 ["ai_generated", "ai_maya", "ai_no_reply", "ai_solved"],
             )
             disposition = "solved_no_reply"
+            if not posted:
+                _release_ticket(ticket_id)
+        elif maya_live and not solve_public:
+            posted = assign_open_for_human(ticket_id, latest_comment, handoff_to, force=True)
+            error = "" if posted else "assign failed"
+            disposition = f"assigned_{lane}"
             if not posted:
                 _release_ticket(ticket_id)
         elif solve_public:
@@ -533,7 +615,11 @@ def _draft_and_post(
                 extra_tags=["ai_generated", f"ai_{agent}", "ai_public_reply", "ai_solved"],
             )
             disposition = "public_solved"
-            if not posted:
+            if not posted and maya_live:
+                posted = assign_open_for_human(ticket_id, latest_comment, handoff_to, force=True)
+                error = "" if posted else error
+                disposition = f"public_solve_failed_assigned_{lane}"
+            elif not posted:
                 posted, error = post_internal_note(ticket_id, note_body, extra)
                 disposition = "public_solve_failed_private_note"
         else:
@@ -594,7 +680,8 @@ def health() -> dict:
         "agent_actions": (os.getenv("AGENT_ACTIONS") or "propose").strip().lower(),
         "maya_live": True,
         "public_solve_emails": sorted(_public_solve_emails()),
-        "human_assignee_email": _human_assignee_email(),
+        "mmi_assignee_email": maya_human_assignee("mmi"),
+        "mmo_assignee_email": maya_human_assignee("mmo"),
         "mmi_event_sheets": _event_sheet_codes(),
         **knowledge_status(),
     }
@@ -628,6 +715,7 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
     latest_comment = str(
         body.get("latest_comment") or body.get("comment") or ticket.get("latest_comment") or ""
     )
+    recipient = str(body.get("recipient") or ticket.get("recipient") or "")
 
     log.info("webhook received ticket_id=%s subject=%s", ticket_id, subject)
 
@@ -645,7 +733,7 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
     # Also catch the human request from the webhook body before another solve.
     if _already_drafted(tags) or asks_for_human("", latest_comment):
         log.info("webhook follow-up ticket_id=%s", ticket_id)
-        background_tasks.add_task(assign_open_for_human, ticket_id, latest_comment)
+        background_tasks.add_task(_follow_up, ticket_id, latest_comment, recipient)
         return JSONResponse(
             {
                 "received": True,
@@ -676,6 +764,7 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
         str(requester_name),
         str(requester_email),
         latest_comment,
+        recipient,
     )
     return JSONResponse(
         {
