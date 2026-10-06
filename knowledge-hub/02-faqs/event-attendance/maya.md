@@ -29,6 +29,23 @@ Best regards,
 
 ---
 
+## Why do I need to bring 100 euros, two times 50 euros, or five times 20 euros
+
+**Agent:** Maya  
+**Category:** Event Logistics  
+**Tag:** Universal
+
+Hello,
+
+Thank you for your message, and I’m sorry if this was not clear.
+
+The ticket you already paid does not include this cash. Please bring 100 euros, or 100 pounds at a UK event, for an exercise during the Millionaire Mind Intensive. You can bring one 100 note, two 50 notes, or five 20 notes. The total is 100.
+
+Kind regards,
+Success Resources Europe
+
+---
+
 ## 3.2 — What should I bring?
 
 **Agent:** Maya  
@@ -41,12 +58,14 @@ Thank you for your question.
 
 We recommend bringing the following items to the event:
 
--€100/£100 cash for a first-day activity
--Pens and a notepad
--Light snacks
--A water bottle
+- €100 or £100 in cash for an exercise during the Millionaire Mind Intensive. This is separate from the ticket you already paid. Bring one 100 note, two 50 notes, or five 20 notes. The total is 100.
+- Pens and a notepad
+- Light snacks
+- A water bottle
 
 We also recommend bringing a light sweater or jacket, as the room temperature may vary throughout the day.
+
+If they asked why they need the cash, answer that question. Do not reply with only the pens, snacks, bottle, or jacket.
 
 Best regards,
 
@@ -461,7 +480,7 @@ Thank you for reaching out.
 
 On-site registration starts at 8:00 AM on Friday and is officially open on Friday only. A participant who arrives very early on Saturday morning can be an exception. Do not say registration stays open until 12:00 noon. Joining from Friday is better, because the programme builds through the weekend and the foundations are on day one.
 
-The €100 cash is for a day-one activity. It is not needed if you join from Saturday.
+The €100 cash is for an exercise on day one. Bring one 100 note, two 50 notes, or five 20 notes. It is not needed if you join from Saturday. The ticket price does not replace this cash.
 
 ---
 

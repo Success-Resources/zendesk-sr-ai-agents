@@ -31,7 +31,13 @@ def _drop_ungrounded_prices(email: str, live: str) -> str:
     if not amounts:
         return email
     hay = re.sub(r"\s+", "", live or "")
-    bad = [amount for amount in amounts if re.sub(r"\s+", "", amount) not in hay]
+    # €100 / £100 is the standing MMI exercise cash, not a city ticket price.
+    bad = [
+        amount
+        for amount in amounts
+        if re.sub(r"\s+", "", amount) not in hay
+        and not re.fullmatch(r"(?:€|£)\s?100", amount.strip())
+    ]
     if not bad:
         return email
     kept = []
@@ -54,7 +60,13 @@ def check(email: str, tools_used: list[str], agent: str, live: str = "") -> tupl
             True,
             "refund language blocked",
         )
-    if _PRICE.search(text) and not ({"lookup_sheet", "fetch_url", "search_site"} & set(tools_used)):
+    without_exercise_cash = re.sub(r"(?:€|£)\s?100\b", "", text, flags=re.I)
+    without_exercise_cash = re.sub(
+        r"\b100\s*(?:eur|euros|gbp|pounds)\b", "", without_exercise_cash, flags=re.I
+    )
+    if _PRICE.search(without_exercise_cash) and not (
+        {"lookup_sheet", "fetch_url", "search_site"} & set(tools_used)
+    ):
         return text, True, "ungrounded price blocked"
     if _DATE_CLAIM.search(text) and not (_LIVE_DATES & set(tools_used)):
         return text, True, "ungrounded date blocked"
