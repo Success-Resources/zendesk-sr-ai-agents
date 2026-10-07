@@ -1,8 +1,12 @@
 """ActiveCampaign lookup and Maya-only confirmation actions.
 
-Confirmation resend is tag-based: if the email is on that MMI Full List,
-Maya adds MMIYYMMCCC-Standard or MMIYYMMCCC-VIP. If that tag is already on
-the contact, she removes it and adds it again so the AC automation fires.
+A missing confirmation or e-ticket does not use the registration sheet.
+Maya looks up the Zendesk ticket email in ActiveCampaign. The event tag is
+MMI + year + month + the city's first three letters, then -Standard or -VIP.
+Stockholm in September 2026 is MMI2609STO-VIP or MMI2609STO-Standard.
+Madrid in October 2026 is MMI2610MAD-VIP or MMI2610MAD-Standard.
+If that tag is already on the contact, she removes it and adds it again so
+the automation sends the email. If it is not there, she does not add it.
 Never runs for Rafa.
 """
 
@@ -16,7 +20,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
-from agents.tools import registrations
+from agents.tools import events, registrations
 
 _EMAIL = re.compile(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}", re.I)
 
@@ -196,75 +200,174 @@ def lookup_ac(query: str) -> str:
     )
 
 
+_EVENT_TAG = re.compile(r"^MMI(\d{2})(\d{2})([A-Z]{3})-(Standard|VIP)$", re.I)
+_MONTH_NAMES = (
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+)
+
+
+def _months_in(text: str) -> set[int]:
+    blob = (text or "").lower()
+    found: set[int] = set()
+    for index, name in enumerate(_MONTH_NAMES, 1):
+        if name == "may":
+            if re.search(r"\b(?:\d{1,2}\s+may|may\s+20\d{2}|in may)\b", blob):
+                found.add(index)
+            continue
+        if re.search(rf"\b{name}\b", blob):
+            found.add(index)
+    return found
+
+
+def _event_rows(existing: list[dict]) -> list[dict]:
+    rows: list[dict] = []
+    for row in existing:
+        match = _EVENT_TAG.match(str(row.get("name") or "").strip())
+        if not match:
+            continue
+        yy, mm, city, _kind = match.groups()
+        rows.append(
+            {
+                **row,
+                "yy": yy,
+                "mm": mm,
+                "city": city.upper(),
+                "prefix": f"MMI{yy}{mm}{city.upper()}",
+            }
+        )
+    return rows
+
+
+def _select_event_tags(query: str, existing: list[dict]) -> tuple[list[dict], str]:
+    """Pick the Standard/VIP tag for the event in the ticket. Do not invent one."""
+    parsed = _event_rows(existing)
+    if not parsed:
+        return [], "no_event_tag"
+
+    explicit = {code.upper() for code in re.findall(r"\b(MMI\d{4}[A-Z]{3})\b", query or "", re.I)}
+    configured = {event["code"].upper() for event in registrations.detect_events(query)}
+    city = events.mentioned_city(query)
+    city3 = re.sub(r"[^A-Za-z]", "", (city or "").split(",")[0])[:3].upper()
+    narrowed = False
+    chosen = parsed
+    if explicit or configured or len(city3) == 3:
+        def matches(row: dict) -> bool:
+            if row["prefix"] in explicit or row["prefix"] in configured:
+                return True
+            return len(city3) == 3 and row["city"] == city3
+
+        chosen = [row for row in parsed if matches(row)]
+        narrowed = True
+        if not chosen:
+            return [], "event_tag_not_on_contact"
+    elif len({row["prefix"] for row in parsed}) != 1:
+        return [], "several_events"
+
+    months = _months_in(query)
+    if months:
+        month_hit = [row for row in chosen if int(row["mm"]) in months]
+        if not month_hit:
+            return [], "event_tag_not_on_contact"
+        chosen = month_hit
+    years = {year[2:] for year in re.findall(r"\b(20\d{2})\b", query or "")}
+    if years:
+        year_hit = [row for row in chosen if row["yy"] in years]
+        if not year_hit:
+            return [], "event_tag_not_on_contact"
+        chosen = year_hit
+
+    prefixes = {row["prefix"] for row in chosen}
+    if len(prefixes) > 1:
+        live = set(events.mmi_codes_for_city(city)) if city else set()
+        live_hit = [row for row in chosen if row["prefix"] in live]
+        if len({row["prefix"] for row in live_hit}) == 1:
+            chosen = live_hit
+        else:
+            return [], "several_events"
+    if not chosen and not narrowed:
+        return [], "no_event_tag"
+    return chosen, "matched"
+
+
 def ac_fix_confirmation(query: str, agent: str = "maya") -> str:
-    """Maya: Full List match → add MMIYYMMCCC-Standard or -VIP in ActiveCampaign."""
+    """Maya: retrigger the event tag already on this email. Do not check a sheet or add a new tag."""
     if (agent or "").lower() != "maya":
         return "ActiveCampaign confirmation actions are Maya only."
-    mode = _mode()
-    if mode == "off":
-        return "ac_actions_off: set AGENT_ACTIONS=propose or execute."
-
-    sheet = registrations.lookup_event_registration(query)
-    email = registrations.first_email(query)
-    looked = lookup_ac(query) if email else "ac_no_email"
+    if _mode() == "off":
+        return (
+            "tag_found=false AC_TAG=failed: set AGENT_ACTIONS=propose or execute. "
+            "Set needs_human true. Do not say a confirmation was sent."
+        )
     spam = (
-        "Always tell the customer to check inbox, spam, junk and promotions. "
-        "Do not invent a ticket number. E-tickets still go out 3–5 days before the event."
+        "Tell them to check inbox, spam, junk and promotions. "
+        "Do not mention a Google Sheet or a registration list."
     )
-
-    if not sheet.startswith("sheet_found=true"):
+    email = _first_email(query)
+    if not email:
         return (
-            f"{sheet}\n{looked}\n"
-            "PLAN: do not add an ActiveCampaign tag until the email is on that city's Full List. "
-            f"{spam}"
+            "tag_found=false AC_TAG=missing reason=no_email. "
+            "Set needs_human true. Do not say a confirmation was sent. " + spam
         )
-
-    tags = re.findall(r"\btag=(MMI\d{4}[A-Z]{3}-(?:Standard|VIP))\b", sheet)
-    if not tags:
-        return (
-            f"{sheet}\n{looked}\n"
-            "PLAN: they are on the list but Standard/VIP is missing. A person must pick the tag. "
-            f"{spam}"
-        )
-    plan = (
-        "PLAN: in ActiveCampaign, add tag(s) "
-        + ", ".join(tags)
-        + ". If the tag is already on the contact, remove it and add it again "
-        "so the confirmation automation is triggered."
-    )
-
     if not configured():
         return (
-            f"{sheet}\n{looked}\n{plan}\n"
-            "AC_TAG=skipped: ActiveCampaign is not configured. A person must add or re-add the tag. "
-            f"{spam}"
+            f"tag_found=false AC_TAG=failed email={email}: ActiveCampaign is not configured. "
+            "Set needs_human true. Do not say a confirmation was sent."
         )
-
-    first = last = ""
-    name_match = re.search(r"\bname=(\S+)\s+(\S+)", sheet)
-    if name_match:
-        first, last = name_match.group(1), name_match.group(2)
     try:
         contact = _contact_by_email(email)
-        created = False
-        if not contact:
-            contact = _create_contact(email, first, last)
-            created = True
-        contact_id = str(contact.get("id") or "")
-        existing = _contact_tags(contact_id) if contact_id else []
-        results = [_retrigger_tag(contact_id, tag, existing) for tag in tags]
     except RuntimeError as exc:
-        return f"{sheet}\n{looked}\n{plan}\nAC_TAG=failed: {exc}. A person must finish this."
-    created_bit = " created contact;" if created else ""
-    retriggered = any("AC_TAG=retriggered" in row for row in results)
-    added = any("AC_TAG=added" in row for row in results)
+        return (
+            f"tag_found=false AC_TAG=failed email={email}: {exc}. "
+            "Set needs_human true. Do not say a confirmation was sent."
+        )
+    if not contact:
+        return (
+            f"tag_found=false AC_TAG=missing email={email} reason=no_contact. "
+            "This address has no ActiveCampaign contact. Do not create one. "
+            "Set needs_human true. Do not say they are registered or that a confirmation was sent. "
+            + spam
+        )
+    contact_id = str(contact.get("id") or "")
+    try:
+        existing = _contact_tags(contact_id)
+    except RuntimeError as exc:
+        return (
+            f"tag_found=false AC_TAG=failed email={email}: {exc}. "
+            "Set needs_human true. Do not say a confirmation was sent."
+        )
+    chosen, why = _select_event_tags(query, existing)
+    if not chosen:
+        have = ", ".join(row["name"] for row in existing) or "(none)"
+        return (
+            f"tag_found=false AC_TAG=missing email={email} reason={why} tags={have}. "
+            "Do not add a tag. A person must take this ticket. Set needs_human true. "
+            "Do not say they are registered or that a confirmation was sent. "
+            + spam
+        )
+    try:
+        results = [_retrigger_tag(contact_id, row["name"], existing) for row in chosen]
+    except RuntimeError as exc:
+        names = ", ".join(row["name"] for row in chosen)
+        return (
+            f"tag_found=true AC_TAG=failed email={email} tag={names}: {exc}. "
+            "Set needs_human true. Do not say a confirmation was sent."
+        )
     return (
-        f"{sheet}\n{looked}\n{plan}\n"
-        f"MODE=execute OK:{created_bit} {'; '.join(results)}. "
-        "Tell the customer the confirmation is on its way and to check spam. "
-        + ("The city tag was already there, so it was removed and added again. " if retriggered else "")
-        + ("The city tag was added. " if added and not retriggered else "")
-        + spam
+        f"tag_found=true email={email} {'; '.join(results)}. "
+        "The event tag was already on this address, so it was removed and added again. "
+        "The confirmation automation will send the email. "
+        "Tell the customer it is on its way. Set needs_human false. " + spam
     )
 
 

@@ -184,6 +184,24 @@ def _load_homes() -> list[tuple[str, str, list[str]]]:
         return list(pages)
 
 
+def mmi_codes_for_city(city: str) -> list[str]:
+    """MMIYYMMCCC codes for upcoming dates of this city. CCC is the city's first three letters."""
+    city = (city or "").strip().lower()
+    letters = re.sub(r"[^a-z]", "", city.split(",")[0])[:3].upper()
+    if len(letters) < 3:
+        return []
+    rows: list[dict] = []
+    for _url, text, _links in _load_homes():
+        rows.extend(_parse_events(text))
+    codes: list[str] = []
+    for row in _dedupe(rows):
+        if city not in row["city"].lower():
+            continue
+        end = row["end"]
+        codes.append(f"MMI{end.year % 100:02d}{end.month:02d}{letters}")
+    return list(dict.fromkeys(codes))
+
+
 def mentioned_city(text: str) -> str:
     blob = (text or "").lower()
     urls = _city_urls(_load_homes())

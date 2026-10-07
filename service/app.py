@@ -2,8 +2,8 @@
 
 Maya is live: a public reply and status solved, except marketing or automated
 mail, which is solved with no reply. Unsubscribe still removes the ticket
-email in ActiveCampaign. A missing confirmation still checks the registration
-sheet and retriggers that city's tag.
+email in ActiveCampaign. A missing confirmation or e-ticket checks that
+address for the event tag and retriggers it. A missing tag is assigned to a person.
 
 Quinn and Rafa stay in test: a private note, unless the requester is in
 ZENDESK_PUBLIC_SOLVE_EMAILS. Anyone who asks to speak to a person is assigned

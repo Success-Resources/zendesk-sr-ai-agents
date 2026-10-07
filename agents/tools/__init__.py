@@ -58,9 +58,10 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
 
 9. ac_fix_confirmation
    action_input: customer email plus the ticket text (city / MMI code)
-   Maya only. Checks that city's Full List. If the email is there, adds
-   MMIYYMMCCC-Standard or MMIYYMMCCC-VIP in ActiveCampaign. If that tag is
-   already on the contact, it is removed and added again so the automation fires.
+   Maya only. Does not use a Google Sheet. If the ticket email already has
+   MMIYYMMCCC-Standard or MMIYYMMCCC-VIP for that event, the tag is removed
+   and added again so the automation fires. If the tag is missing, do not add
+   it and set needs_human true.
 
 10. ac_unsubscribe_lists
    action_input: the email address on the Zendesk ticket

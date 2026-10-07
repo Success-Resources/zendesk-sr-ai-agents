@@ -213,8 +213,7 @@ def _prefetch(
         ac_query = " ".join(part for part in (requester_email, ticket) if part).strip()
         blocks.append(activecampaign.ac_fix_confirmation(ac_query, agent))
         used.append("ac_fix_confirmation")
-
-    if _REGISTERED.search(ticket):
+    elif _REGISTERED.search(ticket):
         query = " ".join(part for part in (requester_email, requester_name, ticket) if part).strip()
         blocks.append(sheets.lookup_registration(query))
         used.append("lookup_registration")
@@ -286,11 +285,12 @@ def run_agent(
         "and the upcoming dates. Do not ask them to reply with a country. "
         "If they asked for a fact sheet and named a city, send only the matching sr-event.com factsheet. "
         "Facebook and WhatsApp groups: send the listed group when they named a city. "
-        "If they did not receive a confirmation email: tell them to check spam/junk/"
-        "promotions. Use the EVENT REGISTRATION / ActiveCampaign result. "
-        "Only say we found their booking if sheet_found=true. "
-        "Do not claim an email was resent unless MODE=execute OK or AC_TAG=added or AC_TAG=retriggered. "
-        "If sheet_found=false, ask for the purchase email and which city and set needs_human true. "
+        "If they did not receive a confirmation email or an e-ticket: do not check a Google Sheet. "
+        "Use the ActiveCampaign result for the email address on the ticket. "
+        "If AC_TAG=retriggered, tell them the confirmation is on its way and to check spam, junk and promotions, "
+        "and set needs_human false. "
+        "If AC_TAG=missing or AC_TAG=failed, do not say they are registered and do not say an email was sent. "
+        "Set needs_human true so the ticket is assigned to a person. "
         + (
             "If they asked to unsubscribe, warn them first that a registered participant may no longer "
             "receive important updates about their event, and tell them they can unsubscribe themselves "
@@ -345,6 +345,8 @@ def run_agent(
             needs = True
         ticket = f"{subject}\n{description}"
         unsub_done = "AC_UNSUB=ok" in live or "AC_UNSUB=already" in live
+        confirm_sent = "AC_TAG=retriggered" in live
+        confirm_needs_person = "AC_TAG=missing" in live or "AC_TAG=failed" in live
         if unsub_done and not blocked:
             if re.search(r"\b(gdpr|data protection|personal data|erasure|forgotten)\b", email, re.I):
                 who = (requester_name or "").strip().split()
@@ -356,6 +358,10 @@ def run_agent(
                     "If another promotional email arrives, forward it to us and we will check that list."
                 )
             needs = False
+        elif confirm_sent and not blocked:
+            needs = False
+        elif confirm_needs_person:
+            needs = True
         elif agent == "rafa":
             needs = True
         elif (

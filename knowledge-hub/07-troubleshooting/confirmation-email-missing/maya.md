@@ -17,11 +17,9 @@ Hello,
 
 Thank you for your message.
 
-We will check the registration list for that MMI city (email in the Full List, Standard or VIP ticket) and resend the confirmation if you are already on file.
+We have checked the email address on this ticket in ActiveCampaign. Where the event tag is already on that address, the confirmation is sent again.
 
 Please also check inbox, spam, junk and promotions.
-
-If you registered with a different address, or if you have not told us which city, reply with the purchase email and the MMI city.
 
 Best regards,
 
@@ -37,13 +35,9 @@ Hello,
 
 Thank you for your message.
 
-E-tickets are sent 3–5 days before the event with the subject line:
-
-"YOUR E-TICKET TO MILLIONAIRE MIND INTENSIVE"
+We have checked the email address on this ticket in ActiveCampaign. Where the event tag is already on that address, the e-ticket message is sent again.
 
 Please check your inbox, as well as your spam, junk, and promotions folders.
-
-If you still can't find your e-ticket, please reply with the email address you used to register, and we'll be happy to assist you.
 
 Best regards,
 
