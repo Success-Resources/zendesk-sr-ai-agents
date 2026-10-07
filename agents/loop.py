@@ -100,6 +100,19 @@ def _agent_name(agent: str) -> str:
     return {"maya": "Maya", "quinn": "Quinn", "rafa": "Rafa"}.get((agent or "").lower(), "Maya")
 
 
+def _signature_name(agent: str) -> str:
+    if (agent or "").lower() == "maya":
+        return "Maya - your AI assistant"
+    return _agent_name(agent)
+
+
+def _strip_em_dashes(text: str) -> str:
+    """Em dashes read as generated text. Keep ordinary hyphens and time ranges."""
+    cleaned = (text or "").replace("\u2014", " - ").replace("\u2015", " - ")
+    cleaned = re.sub(r"[ \t]*--[ \t]*", " - ", cleaned)
+    return re.sub(r" {2,}", " ", cleaned)
+
+
 def _apply_signature(email: str, agent: str) -> str:
     """Close as the agent who wrote the reply, never as the customer or the Zendesk login."""
     text = (email or "").strip()
@@ -112,7 +125,8 @@ def _apply_signature(email: str, agent: str) -> str:
         flags=re.I,
     )
     text = re.sub(r"\n+to your success,?\s*\n[\s\S]*\Z", "", text, flags=re.I).strip()
-    name = _agent_name(agent)
+    text = _strip_em_dashes(text).strip()
+    name = _signature_name(agent)
     return f"{text}\n\nWarm regards,\n{name}\nSuccess Resources Support"
 
 
@@ -243,7 +257,7 @@ def run_agent(
         f"{live}\n\n"
         "Write a new email for this person using those facts. "
         "If they asked about Never Work Again, EWC, GBI, TTT or Quantum Leap, use the QL Sheet "
-        "and hub policy — never Millionaire Mind Intensive dates. "
+        "and hub policy, never Millionaire Mind Intensive dates. "
         "If LIVE EVENTS / the sheet lists dates, include those and no others. "
         "Do not state an event date, city, or venue from memory or from the persona. "
         "Food and accommodation: QL tuition does not include them unless the hub or sheet says so "
@@ -289,8 +303,10 @@ def run_agent(
         "Use the email address on the Zendesk ticket. Do not unsubscribe a different address. "
         "Do not invent a date or price. needs_human is false when this email answers the question. "
         "Set needs_human true only for a refund, a booking that was not found, or a request to speak to a person. "
+        "Do not use em dashes. Use a comma, a period, or a hyphen. "
         "Sign off with the agent name only, never the customer's name, never Akram, and never "
-        "'To your success' or 'Customer Service Team'. JSON only."
+        "'To your success' or 'Customer Service Team'. "
+        "Maya's sign-off name is 'Maya - your AI assistant'. JSON only."
     )
     messages = [
         {"role": "system", "content": system},

@@ -280,6 +280,9 @@ def best_match(agent: str, subject: str, description: str) -> tuple[Entry | None
 
 def sendable_email(text: str) -> str:
     """Same words as the hub email, with the send-ready sign-off."""
+    text = text.replace("\u2014", " - ").replace("\u2015", " - ")
+    text = re.sub(r"[ \t]*--[ \t]*", " - ", text)
+    text = re.sub(r" {2,}", " ", text)
     email = re.sub(
         r"(All the best|Kind regards|Warm regards|Best regards),?\s*\nEvelin\s*$",
         "Warm regards,\nSuccess Resources Support",
