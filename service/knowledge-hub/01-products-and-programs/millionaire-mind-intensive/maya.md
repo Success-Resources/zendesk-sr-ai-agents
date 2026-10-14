@@ -103,9 +103,7 @@ Best regards,
 
 Hello,
 
-Thank you for your message. The event will be conducted in English. For certain events, translation services may also be available; however, availability varies depending on the city and specific event.
-
-We recommend checking with our team or visiting the event website for the most up-to-date information regarding translation options for your chosen event. If you have any further questions, please feel free to reach out, and we will be happy to assist you.
+There is no translation or interpretation at any MMI event this year. All sessions are in English.
 
 Kind regards,
 
@@ -121,9 +119,7 @@ Hello,
 
 Thank you for your question.
 
-Translation availability depends on the specific MMI event and city.
-
-Could you please let us know which event or city you will be attending? We'll be happy to confirm whether translation services are available for your event.
+There is no translation or interpretation at any MMI event this year. All sessions are in English. There is no extra cost, because it is not offered.
 
 Best regards,
 

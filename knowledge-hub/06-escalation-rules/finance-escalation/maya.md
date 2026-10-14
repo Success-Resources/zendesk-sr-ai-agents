@@ -51,7 +51,7 @@ Hello,
 
 Thank you for your message. I understand, and I am sorry this has been difficult.
 
-Before a refund is discussed, we can move your MMI ticket to another MMI date or location, or transfer it to another person. Please tell us which option you prefer. If the purchase email and order number are not already in this thread, please send those too. Nothing changes until we confirm it with you in writing.
+Before a refund is discussed, send the transfer form https://sr-event.typeform.com/to/ccysEJGM and leave the ticket open for the team. Do not ask for an order number. Do not approve the refund.
 
 Do not approve a refund. Do not mention a 14-day window, a processing time such as 45 days, or a full refund. Do not say money will be paid. If they still want a refund after those options, say the team will review the request and do not state an outcome.
 

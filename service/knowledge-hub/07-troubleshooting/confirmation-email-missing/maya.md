@@ -17,7 +17,7 @@ Hello,
 
 Thank you for your message.
 
-We will check the registration list for that MMI city (email in the Full List, Standard or VIP ticket) and resend the confirmation if you are already on file.
+I have asked the team to resend the confirmation. I cannot resend it myself. This ticket stays open.
 
 Please also check inbox, spam, junk and promotions.
 

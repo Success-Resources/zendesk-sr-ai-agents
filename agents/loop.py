@@ -9,7 +9,7 @@ from pathlib import Path
 
 from agents import guardrails, llm
 from agents.tools import TOOL_DOCS, run as run_tool
-from agents.tools import activecampaign, events, hub, links, sheets
+from agents.tools import events, hub, links, sheets
 
 _PERSONAS = Path(__file__).resolve().parent / "personas"
 _MAX_STEPS = 6
@@ -32,12 +32,54 @@ _OVERVIEW = re.compile(
     re.I,
 )
 _NO_REPLY = re.compile(
-    r"(summary of failures for google apps script|"
-    r"spreadsheet shared with you|"
+    r"(spreadsheet shared with you|"
     r"your post has been published|"
     r"\bpostiz\b|webinarkit|"
     r"someone just sent you a new question during the webinar|"
-    r"to view this content, open the following url)",
+    r"to view this content, open the following url|"
+    r"\bout of office\b|\bautomatic reply\b|\bauto-?reply\b)",
+    re.I,
+)
+_INTERNAL_ALERT = re.compile(
+    r"(summary of failures for google apps script|"
+    r"stripe transactions import failed|"
+    r"stripe dispute)",
+    re.I,
+)
+_TYPEFORM = "https://sr-event.typeform.com/to/ccysEJGM"
+_VENUES = {
+    "oslo": "MMI Oslo takes place at Quality Hotel 33, Oslo, 9-11 October 2026.",
+    "birmingham": "MMI Birmingham takes place at Novotel Birmingham Centre, 6-8 November 2026.",
+}
+_DATES = {
+    "amsterdam": "Amsterdam is 29-31 January 2027.",
+}
+_MASTERCLASS = re.compile(r"\b(masterclass|webinar)\b", re.I)
+_GDPR = re.compile(r"\b(gdpr|article\s*17|right to erasure|delete my data|erase my (personal )?data|erasure)\b", re.I)
+_TRANSFER = re.compile(
+    r"\b(transfer|move my|move the ticket|another (date|city|event)|can't attend|cannot attend|can not attend)\b",
+    re.I,
+)
+_NAME = re.compile(r"\b(change (the |my |her |his )?name|wrong name|name correction|participant name)\b", re.I)
+_CASH = re.compile(r"\b(€\s?100|100\s?euros?|£\s?100|2\s*[x×]\s*€?\s?50|two\s*(times\s*)?50|bring cash)\b", re.I)
+_AFFORD = re.compile(r"\b(can't afford|cannot afford|can not afford|don't have the cash|do not have the cash)\b", re.I)
+_TRANSLATION = re.compile(r"\b(translation|interpretation|interpreter|headset)\b", re.I)
+_VENUE_ASK = re.compile(r"\b(venue|hotel|address|fact\s*sheet|factsheet|where is (the |my )?event|location)\b", re.I)
+_FOOD = re.compile(
+    r"\b(food|meal|lunch|snack|served|catering|accommodation|flights?|f&a|board)\b",
+    re.I,
+)
+_VISA = re.compile(r"\b(visa|embassy)\b", re.I)
+_PRIZE = re.compile(r"\b(prize|won|winner)\b", re.I)
+_GUEST = re.compile(r"\b(my guest|guest's details|guest details|guest is)\b", re.I)
+_CLAIM = re.compile(
+    r"(re-?sent|re-?triggered|just triggered|has just been|on its way|"
+    r"removed from our|already been removed|noted\b.{0,40}\bon file|we have noted)",
+    re.I,
+)
+_FOLLOW_PROMISE = re.compile(
+    r"\b(i('ll| will) check|will follow up|get back to you|i've asked the team|i have asked the team|"
+    r"passed .{0,30} to the team|left this with the team)\b",
     re.I,
 )
 _FOLLOWUP = re.compile(
@@ -45,10 +87,10 @@ _FOLLOWUP = re.compile(
     r"which city would you like|let me know which city|could you let me know which)\b.*\n?",
     re.I | re.M,
 )
-_FOOD = re.compile(r"\b(food|accommodation|hotel|flights?|f&a|board|meal)\b", re.I)
 _CONFIRM = re.compile(
     r"\b(confirmation email|e-?ticket|didn'?t receive|have not received|"
-    r"not received (my )?(ticket|email|confirmation))\b",
+    r"not received (my )?(ticket|email|confirmation)|"
+    r"no confirmation|missing confirmation|haven'?t received)\b",
     re.I,
 )
 _UNSUB = re.compile(
@@ -206,13 +248,12 @@ def _prefetch(
         blocks.append(links.lookup_links(ticket))
         used.append("lookup_links")
 
-    if asks_unsubscribe(subject, description):
-        blocks.append(activecampaign.ac_unsubscribe_lists(requester_email or ticket, agent))
-        used.append("ac_unsubscribe_lists")
-    elif agent == "maya" and _CONFIRM.search(ticket):
-        ac_query = " ".join(part for part in (requester_email, ticket) if part).strip()
-        blocks.append(activecampaign.ac_fix_confirmation(ac_query, agent))
-        used.append("ac_fix_confirmation")
+    if asks_unsubscribe(subject, description) or (agent == "maya" and _CONFIRM.search(ticket)):
+        blocks.append(
+            "AC_ACTION=not_performed. Do not unsubscribe and do not resend a confirmation or e-ticket. "
+            "Say the team will do it and leave the ticket open."
+        )
+        used.append("ac_action_skipped")
     elif _REGISTERED.search(ticket):
         query = " ".join(part for part in (requester_email, requester_name, ticket) if part).strip()
         blocks.append(sheets.lookup_registration(query))
@@ -222,6 +263,221 @@ def _prefetch(
         used.append("lookup_sheet")
 
     return "\n\n---\n\n".join(blocks), used
+
+
+def _hello(name: str) -> str:
+    first = (name or "").strip().split()
+    if not first or "@" in first[0]:
+        return "Hello,"
+    return f"Hello {first[0]},"
+
+
+def _city_of(text: str) -> str:
+    return events.mentioned_city(text)
+
+
+def _correct_maya(
+    email: str,
+    needs: bool,
+    reason: str,
+    subject: str,
+    description: str,
+    requester_name: str,
+    live: str,
+) -> tuple[str, bool, str]:
+    """Apply the 3-13 Oct correction set. A handoff stays open. A finished fact can be solved."""
+    blob = f"{subject}\n{description}"
+    words = _customer_words(description)
+    customer = f"{subject}\n{words}"
+    hello = _hello(requester_name)
+    city = _city_of(blob)
+
+    if re.search(r"no reply needed|this is an automated", email or "", re.I):
+        return "", False, "no_reply"
+
+    if _MASTERCLASS.search(blob):
+        return (
+            f"{hello}\n\n"
+            "Thank you for writing about the Masterclass. I do not have a confirmed registration "
+            "link or replay to send, so I have asked the team to send the working link, or the next "
+            "session if there is no replay. I have also flagged the broken link for them. "
+            "This is not an MMI ticket, so I have not sent an MMI city page.",
+            True,
+            "masterclass_handoff",
+        )
+
+    if _GDPR.search(customer):
+        return (
+            f"{hello}\n\n"
+            "Thank you for your message. I have passed on both requests: to stop emails to this "
+            "address, and to delete your personal data. The team will confirm the erasure within "
+            "the legal deadline. I cannot remove the address or delete the data myself.",
+            True,
+            "gdpr_handoff",
+        )
+
+    if asks_unsubscribe(subject, description):
+        repeated = bool(re.search(r"\b(many times|again and again|leave me alone|stop emailing)\b", customer, re.I))
+        wrong_name = bool(re.search(r"\bi am not\b|\bthis is not\b", customer, re.I))
+        extra = ""
+        if wrong_name:
+            extra = " I am sorry the message used the wrong name."
+        if repeated:
+            extra += " Because this has happened more than once, I have flagged it for the team."
+        return (
+            f"{hello}\n\n"
+            f"Thank you.{extra} I have passed your request to the team to remove this email address. "
+            "You can also use the Unsubscribe link at the bottom of each email. "
+            "I have not removed the address myself.",
+            True,
+            "unsubscribe_handoff",
+        )
+
+    if _VISA.search(customer):
+        return (
+            f"{hello}\n\n"
+            "Thank you for your message. The team will handle the confirmation if the embassy calls. "
+            "I have left this ticket open for them. I cannot confirm the seat or resend a ticket myself.",
+            True,
+            "visa_handoff",
+        )
+
+    if _PRIZE.search(customer) and re.search(r"\b(online session|nobody contacted|no one contacted)\b", blob, re.I):
+        return (
+            f"{hello}\n\n"
+            "Thank you for telling us about the prize. The team will contact you. "
+            "If the email on this ticket is not the one you used, please reply with that address. "
+            "An order number is not needed for a free session.",
+            True,
+            "prize_handoff",
+        )
+
+    if _NAME.search(customer) or (_TRANSFER.search(customer) and not _CASH.search(customer)):
+        lines = [
+            f"{hello}",
+            "",
+            "Thank you for your message.",
+        ]
+        if re.search(r"\b(cancer|bereav|sorry to hear|diagnos)\b", customer, re.I):
+            lines.append("I am sorry you are dealing with this.")
+        lines.append(
+            f"Please use this form for the transfer or name change: {_TYPEFORM}"
+        )
+        lines.append("Send one form for each ticket. You do not need to send an order number.")
+        if city == "amsterdam" or "amsterdam" in blob.lower():
+            lines.append(_DATES["amsterdam"])
+        if re.search(r"\bvip\b", customer, re.I):
+            lines.append("VIP transfers are reviewed by the team.")
+        lines.append("Nothing is changed until the team confirms it in writing.")
+        handoff = bool(
+            re.search(r"\b(refund|money back)\b", customer, re.I)
+            or re.search(r"\bvip\b", customer, re.I)
+            or _NAME.search(customer)
+        )
+        return "\n\n".join(lines), handoff or needs, "transfer_form" if not handoff else "transfer_handoff"
+
+    if _GUEST.search(customer):
+        return (
+            f"{hello}\n\n"
+            "Thank you. I have passed your guest's details to the team to register. "
+            "I cannot save those details myself, so this ticket stays open until they do.",
+            True,
+            "guest_handoff",
+        )
+
+    if _CONFIRM.search(customer):
+        order = "Thank you for the order number. " if re.search(r"\b(order|MMI\d{4})", customer, re.I) else ""
+        return (
+            f"{hello}\n\n"
+            f"{order}I have asked the team to check the booking and resend the confirmation or e-ticket. "
+            "I cannot resend it myself. If the purchase used a different email address, please send that address. "
+            "That does not mean you are not registered.",
+            True,
+            "resend_handoff",
+        )
+
+    if _TRANSLATION.search(customer) and not _MASTERCLASS.search(blob):
+        return (
+            f"{hello}\n\n"
+            "There is no translation or interpretation at any MMI event this year. "
+            "All sessions are in English.",
+            False,
+            "interpretation_fact",
+        )
+
+    if _CASH.search(customer):
+        body = (
+            "The €100 cash is for a Day 1 exercise. It is separate from your ticket and is not a fee. "
+            "You can bring one 100 note, two 50 notes, or five 20 notes. "
+            "It is not needed if you join from Saturday."
+        )
+        if _AFFORD.search(customer):
+            body += " If you cannot bring the cash, you can still attend. It is optional."
+        if re.search(r"sheet_found\s*=\s*false|no_row|not found", live or "", re.I):
+            body += (
+                " If the purchase used a different email address, please send that address. "
+                "That does not mean you are not registered."
+            )
+        return f"{hello}\n\n{body}", False, "cash_fact"
+
+    if _VENUE_ASK.search(customer):
+        known = _VENUES.get(city)
+        if known:
+            return (
+                f"{hello}\n\n{known} I have not attached an older fact sheet.",
+                False,
+                "venue_fact",
+            )
+        where = city.title() if city else "that city"
+        return (
+            f"{hello}\n\n"
+            f"I do not have a confirmed venue for {where} on the current list, so I have asked the team "
+            "to send it. I will not send a previous year's fact sheet, and I am not saying the venue is unpublished.",
+            True,
+            "venue_handoff",
+        )
+
+    if _FOOD.search(customer) and re.search(r"\b(food|meal|lunch|snack|served)\b", customer, re.I):
+        place = f"MMI {city.title()}" if city else "MMI"
+        return (
+            f"{hello}\n\n"
+            f"At {place}, light snacks are provided in the breaks. Meals are not included. "
+            "The in-person hours are Friday 9:00-21:00, Saturday 9:00-20:00, and Sunday 8:00-19:00 local. "
+            "VIP speed networking is Saturday at 8:00.",
+            False,
+            "food_fact",
+        )
+
+    if re.search(r"\b(90-day workbook|discount)\b", customer, re.I):
+        return (
+            f"{hello}\n\n"
+            "I do not have a confirmed discount or a 90-day workbook rule for this event. "
+            "I have left it with the team rather than guess.",
+            True,
+            "price_handoff",
+        )
+
+    text = email or ""
+    text = re.sub(r"https://sr-event\.com/\S*factsheet\S*", "", text, flags=re.I)
+    if _CLAIM.search(text):
+        text = _CLAIM.sub("", text)
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+        needs = True
+        reason = "false_claim_removed"
+    if text.strip() and _FOLLOW_PROMISE.search(text):
+        needs = True
+        reason = reason if reason not in {"ok", ""} else "follow_up_left_open"
+    if city and text.strip():
+        other = [name for name in ("kuala lumpur", "singapore") if name != city and name in text.lower()]
+        if other and city not in text.lower():
+            text = (
+                f"{hello}\n\n"
+                f"This reply is about your {city.title()} event only. "
+                "I have asked the team to confirm the detail, and I have not used another city's page."
+            )
+            needs = True
+            reason = "wrong_city_blocked"
+    return text, needs, reason
 
 
 def run_agent(
@@ -235,6 +491,15 @@ def run_agent(
     agent = (agent or "maya").lower()
     if agent not in {"maya", "quinn", "rafa"}:
         agent = "maya"
+    if agent == "maya" and _INTERNAL_ALERT.search(f"{subject}\n{description}"):
+        return AgentResult(
+            agent=agent,
+            email="",
+            needs_human=True,
+            confidence=1.0,
+            reason="internal_alert",
+            trace=["internal alert: leave open, no customer reply"],
+        )
     if agent == "maya" and is_marketing_or_automated(subject, description):
         return AgentResult(
             agent=agent,
@@ -267,7 +532,8 @@ def run_agent(
         "explain that it is for an exercise during the event and is separate from the ticket "
         "they already paid. They may bring one 100 note, two 50 notes, or five 20 notes. "
         "Do not answer that question with pens, snacks, a water bottle, or a jacket. "
-        "The customer should not need to reply. "
+        "The customer should not need to reply when the fact is already known. "
+        "If you have asked the team to do something, set needs_human true. "
         "Do not ask which city or country on a general question about the next event, the price, "
         "the trainer, what to bring, or what they will learn. "
         "Ask a question only when a specific link or a booking check is impossible without it: "
@@ -281,28 +547,24 @@ def run_agent(
         "by an Official Certified Millionaire Mind Intensive Trainer. "
         "What they will learn comes from the hub. What to bring: only what the hub or city page states. "
         "If it is not stated, describe what the ticket includes and link that city page. Do not ask them to choose a city. "
-        "If they asked for a registration link and named no country, send https://millionairemind.live/ "
+        "If they asked for a registration link for MMI and named no country, send https://millionairemind.live/ "
         "and the upcoming dates. Do not ask them to reply with a country. "
-        "If they asked for a fact sheet and named a city, send only the matching sr-event.com factsheet. "
+        "If they asked for a fact sheet, do not send an sr-event.com factsheet. Use the venue list or leave it open. "
         "Facebook and WhatsApp groups: send the listed group when they named a city. "
-        "If they did not receive a confirmation email or an e-ticket: do not check a Google Sheet. "
-        "Use the ActiveCampaign result for the email address on the ticket. "
-        "If AC_TAG=retriggered, tell them the confirmation is on its way and to check spam, junk and promotions, "
-        "and set needs_human false. "
-        "If AC_TAG=missing or AC_TAG=failed, do not say they are registered and do not say an email was sent. "
-        "Set needs_human true so the ticket is assigned to a person. "
-        + (
-            "If they asked to unsubscribe, warn them first that a registered participant may no longer "
-            "receive important updates about their event, and tell them they can unsubscribe themselves "
-            "with the Unsubscribe link at the bottom of each email. "
-            if agent == "maya"
-            else "If they asked to unsubscribe from marketing emails, the whole reply is only that confirmation. "
-        )
-        + "Say the ticket email has already been removed only when AC_UNSUB=ok or AC_UNSUB=already, and then set needs_human false. "
-        "Do not mention GDPR, data deletion, Ireland, or a data protection team, even if they asked for that too. "
-        "Use the email address on the Zendesk ticket. Do not unsubscribe a different address. "
-        "Do not invent a date or price. needs_human is false when this email answers the question. "
-        "Set needs_human true only for a refund, a booking that was not found, or a request to speak to a person. "
+        "If they did not receive a confirmation email or an e-ticket, do not say it was re-sent. "
+        "Say you have asked the team to resend it and set needs_human true. "
+        "Transfers and name changes always include https://sr-event.typeform.com/to/ccysEJGM. "
+        "Do not ask for an order number. One form per ticket. "
+        "There is no translation or interpretation at any MMI event this year. All sessions are in English. "
+        "A reply to a Masterclass or webinar is about that webinar. Do not send an MMI city page. "
+        "If you do not know a venue, say so and set needs_human true. Do not say the venue is unpublished "
+        "and do not send a previous year's fact sheet. "
+        "Oslo 9-11 October 2026 is Quality Hotel 33. Birmingham 6-8 November 2026 is Novotel Birmingham Centre. "
+        "The €100 cash is a Day 1 exercise, separate from the ticket, and not a fee. Answer that first. "
+        "If they cannot afford it, it is optional and they can still attend. "
+        "Never claim you unsubscribed someone, saved a guest, or changed a name. "
+        "Say you have asked the team and set needs_human true. "
+        "A GDPR erasure request gets a short acknowledgement and needs_human true. "
         "Do not use em dashes. Use a comma, a period, or a hyphen. "
         "Sign off with the agent name only, never the customer's name, never Akram, and never "
         "'To your success' or 'Customer Service Team'. "
@@ -343,36 +605,13 @@ def run_agent(
         email, blocked, reason = guardrails.check(email, tools_used, agent, live)
         if blocked:
             needs = True
-        ticket = f"{subject}\n{description}"
-        unsub_done = "AC_UNSUB=ok" in live or "AC_UNSUB=already" in live
-        confirm_sent = "AC_TAG=retriggered" in live
-        confirm_needs_person = "AC_TAG=missing" in live or "AC_TAG=failed" in live
-        if unsub_done and not blocked:
-            if re.search(r"\b(gdpr|data protection|personal data|erasure|forgotten)\b", email, re.I):
-                who = (requester_name or "").strip().split()
-                hello = f"Hello {who[0]}," if who else "Hello,"
-                email = (
-                    f"{hello}\n\n"
-                    "The email address on this ticket has been unsubscribed from our marketing lists "
-                    "and will no longer receive promotional emails from us.\n\n"
-                    "If another promotional email arrives, forward it to us and we will check that list."
-                )
-            needs = False
-        elif confirm_sent and not blocked:
-            needs = False
-        elif confirm_needs_person:
-            needs = True
+        if agent == "maya" and reason != "refund language blocked":
+            email, needs, reason = _correct_maya(
+                email, needs, reason, subject, description, requester_name, live
+            )
         elif agent == "rafa":
             needs = True
-        elif (
-            _OVERVIEW.search(ticket)
-            and not blocked
-            and not _CONFIRM.search(ticket)
-            and not _REGISTERED.search(ticket)
-        ):
-            email = _FOLLOWUP.sub("", email).strip()
-            needs = False
-        if _NO_REPLY.search(ticket):
+        if reason == "no_reply" or (_NO_REPLY.search(f"{subject}\n{description}") and not email.strip()):
             email = ""
             needs = False
             reason = "no_reply"

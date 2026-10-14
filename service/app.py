@@ -1,9 +1,8 @@
 """Zendesk webhook → Maya/Quinn/Rafa draft.
 
-Maya is live: a public reply and status solved, except marketing or automated
-mail, which is solved with no reply. Unsubscribe still removes the ticket
-email in ActiveCampaign. A missing confirmation or e-ticket checks that
-address for the event tag and retriggers it. A missing tag is assigned to a person.
+Maya is live. A finished answer is a public reply and Solved. A handoff is a public
+reply, status Open, and an internal note. She does not resend tickets or
+unsubscribe people. Stripe import failures stay open with no customer reply.
 
 Quinn and Rafa stay in test: a private note, unless the requester is in
 ZENDESK_PUBLIC_SOLVE_EMAILS. Anyone who asks to speak to a person is assigned
@@ -22,6 +21,7 @@ import threading
 import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
+from urllib.parse import quote
 from urllib.request import Request as UrlRequest
 from urllib.request import urlopen
 
@@ -100,6 +100,10 @@ def _compose_generated_note(result) -> tuple[str, list[str], str]:
     )
     if result.needs_human:
         extra.append("needs_human")
+    if result.reason == "masterclass_handoff":
+        extra.append("ai_broken_link")
+    if result.reason == "internal_alert":
+        extra.append("ai_internal_alert")
     if result.email.strip() and not result.needs_human:
         return result.email.strip() + footer, extra, "generated"
     if result.email.strip():
@@ -245,6 +249,68 @@ def _zendesk_get(path: str) -> dict | None:
     except Exception:
         log.exception("zendesk get failed path=%s", path)
         return None
+
+
+def _flag_repeated_broken_link(ticket_id: str, assignee_email: str) -> None:
+    """One internal ticket when several people report the same broken link within a few hours."""
+    creds = _zendesk_auth_header()
+    if not creds:
+        return
+    subdomain, auth = creds
+    recent = _zendesk_get("search.json?query=" + quote("type:ticket tags:ai_broken_link"))
+    alerts = _zendesk_get("search.json?query=" + quote("type:ticket tags:ai_broken_link_alert"))
+    now = time.time()
+    window = 6 * 3600
+
+    def _recent(payload: dict | None) -> int:
+        count = 0
+        for row in (payload or {}).get("results") or []:
+            stamp = str(row.get("updated_at") or "")
+            try:
+                when = time.mktime(time.strptime(stamp[:19], "%Y-%m-%dT%H:%M:%S"))
+            except ValueError:
+                continue
+            if now - when < window:
+                count += 1
+        return count
+
+    if _recent(alerts):
+        return
+    if _recent(recent) < 3:
+        return
+    body = json.dumps(
+        {
+            "ticket": {
+                "subject": "Broken Masterclass link reported by several customers",
+                "comment": {
+                    "public": False,
+                    "body": (
+                        "Several customers reported a broken Masterclass or webinar link "
+                        f"in the last few hours. Latest ticket: {ticket_id}. "
+                        "Send the working link or the replay, and do not point them at an MMI city page."
+                    ),
+                },
+                "status": "open",
+                "assignee_email": assignee_email,
+                "tags": ["ai_broken_link_alert"],
+            }
+        }
+    ).encode()
+    req = UrlRequest(
+        f"https://{subdomain}.zendesk.com/api/v2/tickets.json",
+        data=body,
+        method="POST",
+        headers={
+            "Authorization": auth,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urlopen(req, timeout=20) as resp:
+            log.info("broken-link alert created http=%s from=%s", getattr(resp, "status", 201), ticket_id)
+    except Exception:
+        log.exception("broken-link alert failed from=%s", ticket_id)
 
 
 def _comment_text(comment: dict) -> str:
@@ -599,7 +665,36 @@ def _draft_and_post(
             disposition = "solved_no_reply"
             if not posted:
                 _release_ticket(ticket_id)
+        elif maya_live and public_body and not solve_public:
+            posted, error = post_ticket_update(
+                ticket_id,
+                public_body,
+                public=True,
+                status="open",
+                allow_solve=True,
+                assignee_email=handoff_to,
+                extra_tags=["ai_generated", "ai_maya", "ai_public_reply", "ai_assigned_human", *extra],
+            )
+            if posted:
+                post_internal_note(
+                    ticket_id,
+                    "Left open for the team. Do not solve this until the action in the public reply is done.\n\n"
+                    + note_body,
+                    ["ai_handoff_note"],
+                )
+                if _ticket_status(ticket_id) != "open":
+                    assign_open_for_human(ticket_id, latest_comment, handoff_to, force=True)
+                if "ai_broken_link" in extra:
+                    _flag_repeated_broken_link(ticket_id, handoff_to)
+            disposition = "public_open"
+            if not posted:
+                _release_ticket(ticket_id)
         elif maya_live and not solve_public:
+            post_internal_note(
+                ticket_id,
+                note_body or "Internal alert. No customer reply. Leave this open.",
+                ["ai_handoff_note", *extra],
+            )
             posted = assign_open_for_human(ticket_id, latest_comment, handoff_to, force=True)
             error = "" if posted else "assign failed"
             disposition = f"assigned_{lane}"

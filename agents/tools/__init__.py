@@ -57,16 +57,10 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
    Read-only ActiveCampaign contact and tags. Maya uses this when they did not get a confirmation email or e-ticket.
 
 9. ac_fix_confirmation
-   action_input: customer email plus the ticket text (city / MMI code)
-   Maya only. Does not use a Google Sheet. If the ticket email already has
-   MMIYYMMCCC-Standard or MMIYYMMCCC-VIP for that event, the tag is removed
-   and added again so the automation fires. If the tag is missing, do not add
-   it and set needs_human true.
+   Does not resend anything. Tell the customer the team will resend the confirmation and set needs_human true.
 
 10. ac_unsubscribe_lists
-   action_input: the email address on the Zendesk ticket
-   Maya, Quinn, and Rafa. Unsubscribes that address from every ActiveCampaign list.
-   Only say it is done when the result is AC_UNSUB=ok or AC_UNSUB=already.
+   Does not remove anyone. Tell the customer the team will remove the address and set needs_human true.
 
 11. lookup_doc
    action_input: a short phrase

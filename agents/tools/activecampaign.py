@@ -301,169 +301,21 @@ def _select_event_tags(query: str, existing: list[dict]) -> tuple[list[dict], st
 
 
 def ac_fix_confirmation(query: str, agent: str = "maya") -> str:
-    """Maya: retrigger the event tag already on this email. Do not check a sheet or add a new tag."""
+    """Maya does not resend confirmations. A person does that, and the ticket stays open."""
     if (agent or "").lower() != "maya":
         return "ActiveCampaign confirmation actions are Maya only."
-    if _mode() == "off":
-        return (
-            "tag_found=false AC_TAG=failed: set AGENT_ACTIONS=propose or execute. "
-            "Set needs_human true. Do not say a confirmation was sent."
-        )
-    spam = (
-        "Tell them to check inbox, spam, junk and promotions. "
-        "Do not mention a Google Sheet or a registration list."
-    )
-    email = _first_email(query)
-    if not email:
-        return (
-            "tag_found=false AC_TAG=missing reason=no_email. "
-            "Set needs_human true. Do not say a confirmation was sent. " + spam
-        )
-    if not configured():
-        return (
-            f"tag_found=false AC_TAG=failed email={email}: ActiveCampaign is not configured. "
-            "Set needs_human true. Do not say a confirmation was sent."
-        )
-    try:
-        contact = _contact_by_email(email)
-    except RuntimeError as exc:
-        return (
-            f"tag_found=false AC_TAG=failed email={email}: {exc}. "
-            "Set needs_human true. Do not say a confirmation was sent."
-        )
-    if not contact:
-        return (
-            f"tag_found=false AC_TAG=missing email={email} reason=no_contact. "
-            "This address has no ActiveCampaign contact. Do not create one. "
-            "Set needs_human true. Do not say they are registered or that a confirmation was sent. "
-            + spam
-        )
-    contact_id = str(contact.get("id") or "")
-    try:
-        existing = _contact_tags(contact_id)
-    except RuntimeError as exc:
-        return (
-            f"tag_found=false AC_TAG=failed email={email}: {exc}. "
-            "Set needs_human true. Do not say a confirmation was sent."
-        )
-    chosen, why = _select_event_tags(query, existing)
-    if not chosen:
-        have = ", ".join(row["name"] for row in existing) or "(none)"
-        return (
-            f"tag_found=false AC_TAG=missing email={email} reason={why} tags={have}. "
-            "Do not add a tag. A person must take this ticket. Set needs_human true. "
-            "Do not say they are registered or that a confirmation was sent. "
-            + spam
-        )
-    try:
-        results = [_retrigger_tag(contact_id, row["name"], existing) for row in chosen]
-    except RuntimeError as exc:
-        names = ", ".join(row["name"] for row in chosen)
-        return (
-            f"tag_found=true AC_TAG=failed email={email} tag={names}: {exc}. "
-            "Set needs_human true. Do not say a confirmation was sent."
-        )
     return (
-        f"tag_found=true email={email} {'; '.join(results)}. "
-        "The event tag was already on this address, so it was removed and added again. "
-        "The confirmation automation will send the email. "
-        "Tell the customer it is on its way. Set needs_human false. " + spam
+        "AC_ACTION=not_performed. Do not say a confirmation or e-ticket was re-sent. "
+        "Tell the customer the team will resend it and set needs_human true."
     )
 
-
-def _account_lists() -> dict[str, str]:
-    names: dict[str, str] = {}
-    offset = 0
-    while offset <= 1000:
-        data = _request("GET", f"lists?limit=100&offset={offset}")
-        rows = data.get("lists") or []
-        for row in rows:
-            list_id = str(row.get("id") or "")
-            if list_id:
-                names[list_id] = (row.get("name") or f"list {list_id}").strip()
-        if len(rows) < 100:
-            break
-        offset += 100
-    return names
-
-
-def _memberships(contact_id: str) -> list[dict]:
-    data = _request("GET", f"contacts/{contact_id}/contactLists")
-    return list(data.get("contactLists") or [])
-
-
-def _unsubscribe_one(contact_id: str, list_id: str) -> None:
-    _request(
-        "POST",
-        "contactLists",
-        {"contactList": {"list": list_id, "contact": contact_id, "status": 2}},
-    )
 
 
 def ac_unsubscribe_lists(query: str, agent: str = "maya") -> str:
-    """Remove the ticket sender from every ActiveCampaign list they are still on."""
+    """Maya does not unsubscribe. A person removes the address, and the ticket stays open."""
     if (agent or "").lower() not in {"maya", "quinn", "rafa"}:
         return "ActiveCampaign unsubscribe is for Maya, Quinn, and Rafa only."
-    mode = _mode()
-    if mode == "off":
-        return "ac_actions_off: set AGENT_ACTIONS=propose or execute. Do not say they were unsubscribed."
-    if not configured():
-        return (
-            "AC_UNSUB=skipped: ActiveCampaign is not configured. "
-            "A person must unsubscribe this address from all lists. Do not say it is done."
-        )
-    email = _first_email(query)
-    if not email:
-        return (
-            "AC_UNSUB=no_email: the Zendesk ticket has no sender email. "
-            "Ask which address to remove. Do not say they were unsubscribed."
-        )
-    try:
-        contact = _contact_by_email(email)
-    except RuntimeError as exc:
-        return f"AC_UNSUB=failed: {exc}. A person must unsubscribe {email}. Do not say it is done."
-    if not contact:
-        return (
-            f"AC_UNSUB=not_found email={email}. "
-            "No ActiveCampaign contact for the address on this ticket. "
-            "Do not create one. A person should confirm there is no other address. "
-            "Do not say they were unsubscribed."
-        )
-    contact_id = str(contact.get("id") or "")
-    try:
-        names = _account_lists()
-        rows = _memberships(contact_id)
-    except RuntimeError as exc:
-        return f"AC_UNSUB=failed email={email}: {exc}. A person must finish the lists."
-    subscribed = [row for row in rows if str(row.get("status") or "") != "2"]
-    if not subscribed:
-        return (
-            f"AC_UNSUB=already email={email} contact={contact_id}. "
-            "They are not on any active ActiveCampaign list. "
-            "Tell them marketing mail to this address is already stopped."
-        )
-    done: list[str] = []
-    failed: list[str] = []
-    for row in subscribed:
-        list_id = str(row.get("list") or "")
-        label = names.get(list_id) or f"list {list_id}"
-        try:
-            _unsubscribe_one(contact_id, list_id)
-            done.append(label)
-        except RuntimeError as exc:
-            failed.append(f"{label} ({exc})")
-    if failed and not done:
-        return (
-            f"AC_UNSUB=failed email={email}. " + "; ".join(failed) +
-            ". A person must unsubscribe the remaining lists. Do not say it is done."
-        )
-    result = f"AC_UNSUB=ok email={email} removed={', '.join(done) or '(none)'}"
-    if failed:
-        result += " still_failed=" + "; ".join(failed)
-        result += ". Tell them the lists that were removed. A person must finish the ones that failed."
-    else:
-        result += (
-            ". Tell them this email has been unsubscribed from marketing lists. "
-            "Another promotional email after this can be forwarded so the remaining list can be identified."
-        )
-    return result
+    return (
+        "AC_ACTION=not_performed. Do not say the address was removed. "
+        "Tell the customer the team will remove it and set needs_human true."
+    )

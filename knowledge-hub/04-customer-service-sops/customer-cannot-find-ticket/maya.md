@@ -17,7 +17,7 @@ Hello,
 
 Thank you for your message.
 
-Your confirmation email has been sent. Please check your inbox, as well as your spam, junk, and promotions folders.
+I have asked the team to resend the confirmation. I cannot resend it myself. Please also check inbox, spam, junk, and promotions. This ticket stays open.
 
 If you still can't find it, please reply with the email address you used to register, and we'll be happy to resend your confirmation email.
 

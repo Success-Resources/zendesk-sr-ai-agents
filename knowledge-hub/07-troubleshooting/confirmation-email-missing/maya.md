@@ -17,7 +17,7 @@ Hello,
 
 Thank you for your message.
 
-We have checked the email address on this ticket in ActiveCampaign. Where the event tag is already on that address, the confirmation is sent again.
+I have asked the team to resend the confirmation. I cannot resend it myself. This ticket stays open.
 
 Please also check inbox, spam, junk and promotions.
 
@@ -35,7 +35,7 @@ Hello,
 
 Thank you for your message.
 
-We have checked the email address on this ticket in ActiveCampaign. Where the event tag is already on that address, the e-ticket message is sent again.
+I have asked the team to resend the e-ticket. I cannot resend it myself. This ticket stays open.
 
 Please check your inbox, as well as your spam, junk, and promotions folders.
 
