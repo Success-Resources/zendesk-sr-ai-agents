@@ -9,7 +9,7 @@ from pathlib import Path
 
 from agents import guardrails, llm
 from agents.tools import TOOL_DOCS, run as run_tool
-from agents.tools import events, hub, links, sheets
+from agents.tools import events, factsheets, hub, links, sheets
 
 _PERSONAS = Path(__file__).resolve().parent / "personas"
 _MAX_STEPS = 6
@@ -64,7 +64,11 @@ _NAME = re.compile(r"\b(change (the |my |her |his )?name|wrong name|name correct
 _CASH = re.compile(r"\b(€\s?100|100\s?euros?|£\s?100|2\s*[x×]\s*€?\s?50|two\s*(times\s*)?50|bring cash)\b", re.I)
 _AFFORD = re.compile(r"\b(can't afford|cannot afford|can not afford|don't have the cash|do not have the cash)\b", re.I)
 _TRANSLATION = re.compile(r"\b(translation|interpretation|interpreter|headset)\b", re.I)
-_VENUE_ASK = re.compile(r"\b(venue|hotel|address|fact\s*sheet|factsheet|where is (the |my )?event|location)\b", re.I)
+_VENUE_ASK = re.compile(
+    r"\b(venue|hotel|address|fact\s*sheet|factsheet|where is (the |my )?event|location|"
+    r"schedule|timetable|more information|event details|what time|start time)\b",
+    re.I,
+)
 _FOOD = re.compile(
     r"\b(food|meal|lunch|snack|served|catering|accommodation|flights?|f&a|board)\b",
     re.I,
@@ -244,6 +248,17 @@ def _prefetch(
             blocks.append(events.fetch_next_city(ticket, agent))
             used.append("fetch_url")
 
+    if agent == "maya" and (
+        _VENUE_ASK.search(ticket)
+        or re.search(
+            r"fact\s*sheet|factsheet|schedule|timetable|more information|event details|what time|start time",
+            ticket,
+            re.I,
+        )
+    ):
+        blocks.append(factsheets.lookup_factsheet(ticket))
+        used.append("lookup_factsheet")
+
     if agent == "maya" and _LINKS.search(ticket):
         blocks.append(links.lookup_links(ticket))
         used.append("lookup_links")
@@ -263,6 +278,28 @@ def _prefetch(
         used.append("lookup_sheet")
 
     return "\n\n---\n\n".join(blocks), used
+
+
+def _factsheet_body(live: str) -> tuple[str, str] | None:
+    text = live or ""
+    if "FACTSHEET_PAGE city=" not in text and "FACTSHEET_PAGE code=" not in text:
+        return None
+    url_match = re.search(r"URL: (https://\S+)", text)
+    marker = text.find("Do not use another event's fact sheet.")
+    if not url_match or marker < 0:
+        return None
+    body = text[marker + len("Do not use another event's fact sheet.") :].strip()
+    if len(body) < 40:
+        return None
+    return url_match.group(1), body
+
+
+def _quotes_page(email: str, page: str) -> bool:
+    words = {w.lower() for w in re.findall(r"[A-Za-z]{5,}", page[:900])}
+    skip = {"millionaire", "intensive", "friday", "saturday", "sunday", "event", "registration"}
+    words -= skip
+    hay = (email or "").lower()
+    return sum(1 for word in words if word in hay) >= 2
 
 
 def _hello(name: str) -> str:
@@ -420,7 +457,19 @@ def _correct_maya(
             )
         return f"{hello}\n\n{body}", False, "cash_fact"
 
-    if _VENUE_ASK.search(customer):
+    if _VENUE_ASK.search(customer) or re.search(r"fact\s*sheet|factsheet", customer, re.I):
+        page = _factsheet_body(live)
+        if page:
+            url, body = page
+            if _quotes_page(email, body):
+                return email, False, "factsheet_page"
+            clip = body[:1600].strip()
+            return (
+                f"{hello}\n\n"
+                f"Here are the details from the current fact sheet: {url}\n\n{clip}",
+                False,
+                "factsheet_page",
+            )
         known = _VENUES.get(city)
         if known:
             return (
@@ -549,7 +598,8 @@ def run_agent(
         "If it is not stated, describe what the ticket includes and link that city page. Do not ask them to choose a city. "
         "If they asked for a registration link for MMI and named no country, send https://millionairemind.live/ "
         "and the upcoming dates. Do not ask them to reply with a country. "
-        "If they asked for a fact sheet, do not send an sr-event.com factsheet. Use the venue list or leave it open. "
+        "If they asked for a fact sheet or a venue, use FACTSHEET_PAGE from the 2026 sheet. "
+        "You may send that link. Do not send a different city's file. "
         "Facebook and WhatsApp groups: send the listed group when they named a city. "
         "If they did not receive a confirmation email or an e-ticket, do not say it was re-sent. "
         "Say you have asked the team to resend it and set needs_human true. "
@@ -557,9 +607,8 @@ def run_agent(
         "Do not ask for an order number. One form per ticket. "
         "There is no translation or interpretation at any MMI event this year. All sessions are in English. "
         "A reply to a Masterclass or webinar is about that webinar. Do not send an MMI city page. "
-        "If you do not know a venue, say so and set needs_human true. Do not say the venue is unpublished "
-        "and do not send a previous year's fact sheet. "
-        "Oslo 9-11 October 2026 is Quality Hotel 33. Birmingham 6-8 November 2026 is Novotel Birmingham Centre. "
+        "If FACTSHEET_PAGE is present, quote the venue, address, and dates from it and you may send its URL. "
+        "If it is missing, say you do not have the fact sheet and set needs_human true. Do not say the venue is unpublished. "
         "The €100 cash is a Day 1 exercise, separate from the ticket, and not a fee. Answer that first. "
         "If they cannot afford it, it is optional and they can still attend. "
         "Never claim you unsubscribed someone, saved a guest, or changed a name. "

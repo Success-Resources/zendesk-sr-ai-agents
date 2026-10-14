@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agents.tools import activecampaign, docs, events, hub, links, registrations, sheets, web
+from agents.tools import activecampaign, docs, events, factsheets, hub, links, registrations, sheets, web
 
 TOOLS = {
     "search_hub": hub.search_hub,
@@ -10,6 +10,7 @@ TOOLS = {
     "lookup_registration": sheets.lookup_registration,
     "lookup_event_registration": registrations.lookup_event_registration,
     "lookup_links": links.lookup_links,
+    "lookup_factsheet": factsheets.lookup_factsheet,
     "lookup_ac": activecampaign.lookup_ac,
     "ac_fix_confirmation": activecampaign.ac_fix_confirmation,
     "ac_unsubscribe_lists": activecampaign.ac_unsubscribe_lists,
@@ -45,24 +46,27 @@ You have these tools. Use LIVE FACTS already in the user message first. Call ext
 
 6. lookup_links
    action_input: the ticket text (city/country if they named one)
-   MMI registration (millionairemind.live), city factsheets (sr-event.com), Facebook groups, WhatsApp groups.
-   Ask which city only when they asked for that city's factsheet or group. Do not invent a URL.
+   Facebook groups and WhatsApp groups. Fact sheets come from lookup_factsheet, not from this list.
 
-7. search_hub
+7. lookup_factsheet
+   action_input: the ticket text, including the city
+   Reads the 2026 customer-service sheet, column D, opens that fact sheet, and returns the venue, dates, and schedule. Quote those facts. You may send that link.
+
+8. search_hub
    action_input: the customer question
    Approved emails and policies from GitHub.
 
-8. lookup_ac
+9. lookup_ac
    action_input: the customer email
    Read-only ActiveCampaign contact and tags. Maya uses this when they did not get a confirmation email or e-ticket.
 
-9. ac_fix_confirmation
+10. ac_fix_confirmation
    Does not resend anything. Tell the customer the team will resend the confirmation and set needs_human true.
 
-10. ac_unsubscribe_lists
+11. ac_unsubscribe_lists
    Does not remove anyone. Tell the customer the team will remove the address and set needs_human true.
 
-11. lookup_doc
+12. lookup_doc
    action_input: a short phrase
    Google Docs listed in GOOGLE_DOC_IDS only.
 
