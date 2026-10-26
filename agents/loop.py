@@ -65,7 +65,7 @@ _CASH = re.compile(r"\b(€\s?100|100\s?euros?|£\s?100|2\s*[x×]\s*€?\s?50|tw
 _AFFORD = re.compile(r"\b(can't afford|cannot afford|can not afford|don't have the cash|do not have the cash)\b", re.I)
 _TRANSLATION = re.compile(r"\b(translation|interpretation|interpreter|headset)\b", re.I)
 _VENUE_ASK = re.compile(
-    r"\b(venue|hotel|address|fact\s*sheet|factsheet|where is (the |my )?event|location|"
+    r"\b(venue|hotel|(?<!e-mail )(?<!email )(?<!mail )address|fact\s*sheet|factsheet|where is (the |my )?event|location|"
     r"schedule|timetable|more information|event details|what time|start time)\b",
     re.I,
 )
