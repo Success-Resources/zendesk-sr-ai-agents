@@ -1,8 +1,8 @@
 """Zendesk webhook → Maya/Quinn/Rafa reply.
 
-A finished answer is a public reply and Solved, for Maya and for Quinn.
-Rafa still does not auto-send her draft: the customer gets a short holding
-reply, the draft stays on an internal note, and the ticket is Open and assigned.
+Only Maya posts to the customer. A finished answer is a public reply and
+Solved. Her handoff is a holding reply, status Open, and an assignee.
+Quinn and Rafa stay internal-note only: no public comment and no status change.
 srv@ is skipped. MMI goes to Meda, MMO (mmo@) goes to Alina.
 
 The trigger body is not trusted. The ticket id is recovered from broken JSON,
@@ -838,6 +838,14 @@ def _apply_disposition(ticket_id: str, disposition: flow.Disposition) -> dict:
         return failed
     if action == "handoff":
         return _apply_handoff(ticket_id, disposition)
+    if action == "internal_draft":
+        # Private note only. No public comment, no status, no assignee.
+        ok, detail = post_internal_note(
+            ticket_id,
+            disposition.internal_note or "No sendable draft. A person should reply.",
+            disposition.tags,
+        )
+        return _pack(disposition, posted=ok, assigned=False, reply="", detail=detail)
     return _pack(disposition, posted=False, assigned=False, detail="nothing to do")
 
 
@@ -847,6 +855,7 @@ def _plan(disposition: flow.Disposition) -> dict:
         "agent": disposition.agent,
         "reason": disposition.reason,
         "reply": disposition.public_body,
+        "internal_note": disposition.internal_note,
         "assignee": disposition.assignee_email if disposition.action == "handoff" else "",
         "lane": disposition.lane,
         "tags": list(disposition.tags),

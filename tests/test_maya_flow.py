@@ -105,7 +105,7 @@ class ParseAndClaimTests(unittest.TestCase):
 
 
 class DecideTests(unittest.TestCase):
-    def test_confident_quinn_solves_publicly(self) -> None:
+    def test_confident_quinn_stays_an_internal_note(self) -> None:
         disposition = flow.decide(
             agent="quinn",
             lane="mmi",
@@ -116,12 +116,16 @@ class DecideTests(unittest.TestCase):
             assignee_email="meda.c@srglobal.com",
             reason="ok",
         )
-        self.assertEqual(disposition.action, "solve")
-        self.assertEqual(disposition.status, "solved")
-        self.assertIn(flow.TAG_ANSWERED, disposition.tags)
-        self.assertNotIn("ai_draft_only", disposition.tags)
-        self.assertNotIn("Staff only", disposition.public_body)
-        self.assertIn("Quantum Leap", disposition.public_body)
+        self.assertEqual(disposition.action, "internal_draft")
+        self.assertIsNone(disposition.status)
+        self.assertEqual(disposition.assignee_email, "")
+        self.assertEqual(disposition.public_body, "")
+        self.assertEqual(disposition.internal_note, "staff")
+        self.assertIn("ai_draft_only", disposition.tags)
+        self.assertIn("ai_quinn", disposition.tags)
+        self.assertNotIn(flow.TAG_ANSWERED, disposition.tags)
+        text = flow.format_outcome("1", {"action": disposition.action, "agent": disposition.agent, "internal_note": disposition.internal_note, "tags": disposition.tags, "posted": False})
+        self.assertIn("action: internal draft (quinn)", text)
 
     def test_rafa_draft_is_not_the_public_reply(self) -> None:
         disposition = flow.decide(
@@ -134,14 +138,17 @@ class DecideTests(unittest.TestCase):
             assignee_email="alina.last@srglobal.com",
             reason="Rafa drafts only. A person sends.",
         )
-        self.assertEqual(disposition.action, "handoff")
-        self.assertEqual(disposition.assignee_email, "alina.last@srglobal.com")
-        self.assertEqual(disposition.status, "open")
-        self.assertIn("passed this to a teammate", disposition.public_body)
-        self.assertNotIn("refund you today", disposition.public_body)
+        self.assertEqual(disposition.action, "internal_draft")
+        self.assertIsNone(disposition.status)
+        self.assertEqual(disposition.assignee_email, "")
+        self.assertEqual(disposition.public_body, "")
         self.assertIn("FULL DRAFT", disposition.internal_note)
-        self.assertIn(flow.TAG_ASSIGNED, disposition.tags)
-        self.assertTrue(disposition.claims_handoff)
+        self.assertNotIn("refund you today", disposition.public_body)
+        self.assertIn("ai_draft_only", disposition.tags)
+        self.assertIn("ai_rafa", disposition.tags)
+        self.assertNotIn(flow.TAG_ASSIGNED, disposition.tags)
+        text = flow.format_outcome("2", {"action": disposition.action, "agent": disposition.agent, "internal_note": disposition.internal_note, "posted": False})
+        self.assertIn("action: internal draft (rafa)", text)
 
     def test_handoff_promise_is_not_solved(self) -> None:
         disposition = flow.decide(
@@ -256,7 +263,7 @@ class ProcessTests(unittest.TestCase):
         return outcome, posted, seen
 
     def test_old_draft_tag_does_not_block_a_public_solve(self) -> None:
-        outcome, posted, _seen = self._run(_ctx(), _draft(agent="quinn"))
+        outcome, posted, _seen = self._run(_ctx(), _draft(agent="maya"))
         self.assertEqual(posted[0].action, "solve")
         self.assertEqual(posted[0].status, "solved")
         self.assertIn("ai_answered", posted[0].tags)
@@ -281,19 +288,25 @@ class ProcessTests(unittest.TestCase):
             note_body="FULL DRAFT stays internal",
             reason="Rafa drafts only. A person sends.",
         )
-        _outcome, posted, _seen = self._run(ctx, draft)
-        self.assertEqual(posted[0].action, "handoff")
-        self.assertEqual(posted[0].status, "open")
-        self.assertEqual(posted[0].assignee_email, "alina.last@srglobal.com")
-        self.assertIn("teammate", posted[0].public_body)
-        self.assertNotIn("refund you today", posted[0].public_body)
-        self.assertIn("FULL DRAFT", posted[0].internal_note)
-        self.assertIn("ai_assigned_human", posted[0].tags)
+        outcome, posted, _seen = self._run(ctx, draft, live=False)
+        self.assertEqual(posted, [])
+        self.assertEqual(outcome["action"], "internal_draft")
+        self.assertEqual(outcome["reply"], "")
+        self.assertEqual(outcome["assignee"], "")
+        self.assertIn("FULL DRAFT", outcome["internal_note"])
+        self.assertIn("ai_draft_only", outcome["tags"])
+        self.assertIn("ai_rafa", outcome["tags"])
+        self.assertIn("action: internal draft (rafa)", flow.format_outcome("100", outcome))
 
-    def test_rafa_on_mmi_hands_off_to_meda(self) -> None:
-        draft = _draft(agent="rafa", needs_human=True, matched="generated_needs_human", reason="Rafa drafts only. A person sends.")
+    def test_quinn_live_note_does_not_change_status(self) -> None:
+        draft = _draft(agent="quinn", public_body="Hello,\n\nHere are the QL dates.")
         _outcome, posted, _seen = self._run(_ctx(), draft)
-        self.assertEqual(posted[0].assignee_email, "meda.c@srglobal.com")
+        self.assertEqual(posted[0].action, "internal_draft")
+        self.assertIsNone(posted[0].status)
+        self.assertEqual(posted[0].public_body, "")
+        self.assertEqual(posted[0].assignee_email, "")
+        self.assertIn("ai_draft_only", posted[0].tags)
+        self.assertIn("ai_quinn", posted[0].tags)
 
     def test_srv_is_skipped(self) -> None:
         def drafter(**_kwargs):
@@ -419,14 +432,14 @@ class ProcessTests(unittest.TestCase):
         app.post_internal_note = note
         try:
             disposition = flow.decide(
-                agent="rafa",
+                agent="maya",
                 lane="mmi",
                 needs_human=True,
                 matched="generated_needs_human",
-                public_body="I have passed this refund request to the team.",
+                public_body="",
                 note_body="internal draft",
                 assignee_email="meda.c@srglobal.com",
-                reason="Rafa drafts only. A person sends.",
+                reason="needs a person",
             )
             outcome = app._apply_handoff("5", disposition)
         finally:
@@ -569,8 +582,11 @@ class BackfillScriptTests(unittest.TestCase):
         self.assertIn("All sessions are in English", joined)
         self.assertIn("posted: no", joined)
         self.assertIn("ticket 550002", joined)
-        self.assertIn("action: handoff to alina.last@srglobal.com", joined)
+        self.assertIn("action: internal draft (rafa)", joined)
+        self.assertIn("ai_draft_only", joined)
+        self.assertIn("ai_rafa", joined)
         self.assertNotIn("refund you today", joined)
+        self.assertNotIn("passed this to a teammate", joined.split("ticket 550003")[0])
         self.assertIn("ticket 550003", joined)
         self.assertIn("action: handoff to meda.c@srglobal.com", joined)
         self.assertIn("resend your confirmation", joined)

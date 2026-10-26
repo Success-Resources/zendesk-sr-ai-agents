@@ -319,10 +319,10 @@ def decide(
     assignee_email: str,
     reason: str = "",
 ) -> Disposition:
-    """Solve when the answer is finished. Otherwise hand off to the lane owner.
+    """Maya solves or hands off. Quinn and Rafa stay on an internal note.
 
-    Rafa's draft is never the public reply. The customer gets a short holding
-    line, and only the internal note keeps the draft.
+    Only Maya posts to the customer. Quinn and Rafa keep the pre-existing
+    draft: a private note, no public comment, no status change, no assignee.
     """
     agent = (agent or "maya").lower()
     if lane == "srv":
@@ -332,6 +332,19 @@ def decide(
             reason="srv mailbox",
             lane=lane,
             tags=["ai_skipped_srv"],
+        )
+    if agent in {"quinn", "rafa"}:
+        note = (note_body or "").strip() or without_staff_footer(public_body)
+        return Disposition(
+            action="internal_draft",
+            agent=agent,
+            reason=reason or "draft only",
+            public_body="",
+            internal_note=note,
+            status=None,
+            assignee_email="",
+            lane=lane,
+            tags=["ai_draft_only", f"ai_{agent}", "ai_generated"],
         )
     if matched == "no_reply" or reason == "no_reply":
         return Disposition(
@@ -436,7 +449,7 @@ def backfill_skip_reason(
 def merge_tags(disposition: Disposition, extra: list[str]) -> Disposition:
     tags: list[str] = []
     for tag in [*disposition.tags, *extra]:
-        if tag and tag not in tags and tag != "ai_draft_only":
+        if tag and tag not in tags:
             tags.append(tag)
     disposition.tags = tags
     return disposition
@@ -453,13 +466,21 @@ def format_outcome(ticket_id: str, outcome: dict) -> str:
         lines.append("action: solve (no public reply)")
     elif action == "handoff":
         lines.append(f"action: handoff to {outcome.get('assignee') or 'unassigned'}")
+    elif action == "internal_draft":
+        lines.append(f"action: internal draft ({outcome.get('agent') or 'agent'})")
     elif action == "skip_srv":
         lines.append("action: skip (srv@srglobal.com)")
     elif action == "skip":
         lines.append(f"action: skip ({outcome.get('reason') or 'skipped'})")
     else:
         lines.append(f"action: {action}")
+    note = (outcome.get("internal_note") or "").strip()
+    if action == "internal_draft" and note:
+        lines.append("internal note:")
+        lines.append(note)
     reply = (outcome.get("reply") or "").strip()
+    if action == "internal_draft":
+        reply = ""
     if reply:
         lines.append("reply:")
         lines.append(reply)
@@ -537,6 +558,7 @@ def demo_cases() -> list[tuple[str, dict]]:
                     "agent": disposition.agent,
                     "reason": disposition.reason,
                     "reply": disposition.public_body,
+                    "internal_note": disposition.internal_note,
                     "assignee": disposition.assignee_email if disposition.action == "handoff" else "",
                     "lane": disposition.lane,
                     "tags": list(disposition.tags),
