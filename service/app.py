@@ -1,12 +1,14 @@
-"""Zendesk webhook → Maya/Quinn/Rafa draft.
+"""Zendesk webhook → Maya/Quinn/Rafa reply.
 
-Maya is live. A finished answer is a public reply and Solved. A handoff is a public
-reply, status Open, and an internal note. She does not resend tickets or
-unsubscribe people. Stripe import failures stay open with no customer reply.
+A finished answer is a public reply and Solved, for Maya and for Quinn.
+Rafa still does not auto-send her draft: the customer gets a short holding
+reply, the draft stays on an internal note, and the ticket is Open and assigned.
+srv@ is skipped. MMI goes to Meda, MMO (mmo@) goes to Alina.
 
-Quinn and Rafa stay in test: a private note, unless the requester is in
-ZENDESK_PUBLIC_SOLVE_EMAILS. Anyone who asks to speak to a person is assigned
-to ZENDESK_HUMAN_ASSIGNEE_EMAIL instead.
+The trigger body is not trusted. The ticket id is recovered from broken JSON,
+then the ticket and comments are read from the API. A claim expires and is
+released when the run finishes, so a later replay is not stuck on
+"already processing".
 """
 
 from __future__ import annotations
@@ -17,7 +19,6 @@ import logging
 import os
 import re
 import sys
-import threading
 import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -28,6 +29,8 @@ from urllib.request import urlopen
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
+
+import flow
 from knowledge import draft_note, ensure_hub, knowledge_status, route_agent
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -41,13 +44,11 @@ log = logging.getLogger("zendesk_ai")
 
 app = FastAPI(title="SR Zendesk AI")
 
-# One Claude run per ticket. Zendesk retries the webhook when Claude is slow;
-# without this lock each retry bills again and posts another note.
-_draft_lock = threading.Lock()
-_claimed_tickets: set[str] = set()
-_AI_DRAFT_TAGS = frozenset(
-    {"ai_draft_only", "ai_generated", "ai_matcher_fallback", "ai_assigned_human", "ai_skipped_srv"}
-)
+# One Claude run per ticket. Zendesk retries the webhook when Claude is slow.
+# The claim expires so a crashed run cannot block the ticket for the life of
+# the process, and it is released when the run finishes so it does not survive
+# into the next webhook.
+_claims = flow.ClaimBook(ttl_seconds=flow.DEFAULT_CLAIM_TTL_SECONDS)
 _DEFAULT_TEST_EMAIL = "akram.r@srglobal.com"
 _SRV_MAILBOX = "srv@srglobal.com"
 _MMO_MAILBOX = "mmo@srglobal.com"
@@ -86,13 +87,14 @@ def _brain_label() -> str:
 
 
 def _compose_generated_note(result) -> tuple[str, list[str], str]:
+    """Staff note, extra tags, and a match label. The staff footer never goes to the customer."""
     if result.reason == "no_reply":
         return (
             "No customer reply. This is an automated notification or a webinar chat note. Leave the status unchanged.",
-            ["ai_draft_only", f"ai_{result.agent}", "ai_generated", "ai_no_reply"],
+            ["ai_no_reply"],
             "no_reply",
         )
-    extra = ["ai_draft_only", f"ai_{result.agent}", "ai_generated"]
+    extra: list[str] = []
     footer = (
         f"\n\n---\nStaff only — {result.agent.title()} wrote this with {_brain_label()}. "
         f"tools={','.join(result.tools_used) or 'none'}; "
@@ -131,8 +133,22 @@ def _email_set(env_name: str, default: str) -> set[str]:
 
 
 def _public_solve_emails() -> set[str]:
-    """Requesters who receive a public reply and Solved. Empty env disables it."""
+    """Kept for /health. It no longer gates who receives a public reply."""
     return _email_set("ZENDESK_PUBLIC_SOLVE_EMAILS", _DEFAULT_TEST_EMAIL)
+
+
+def _claim_ttl() -> float:
+    raw = (os.getenv("MAYA_CLAIM_TTL_SECONDS") or "").strip()
+    if not raw:
+        return flow.DEFAULT_CLAIM_TTL_SECONDS
+    try:
+        return max(30.0, float(raw))
+    except ValueError:
+        return flow.DEFAULT_CLAIM_TTL_SECONDS
+
+
+def _bot_email() -> str:
+    return (os.getenv("ZENDESK_EMAIL") or "").strip().lower()
 
 
 def _human_assignee_email() -> str:
@@ -199,38 +215,13 @@ def _zendesk_auth_header() -> tuple[str, str] | None:
     return subdomain, "Basic " + base64.b64encode(pair).decode("ascii")
 
 
-def _ticket_id(body: dict) -> str | None:
-    ticket = body.get("ticket") if isinstance(body.get("ticket"), dict) else {}
-    raw = body.get("id") or body.get("ticket_id") or ticket.get("id")
-    if raw is None:
-        return None
-    text = str(raw).strip()
-    return text or None
-
-
-def _tag_set(tags) -> set[str]:
-    if isinstance(tags, list):
-        parts = tags
-    else:
-        parts = str(tags or "").replace(",", " ").split()
-    return {str(p).strip().lower() for p in parts if str(p).strip()}
-
-
-def _already_drafted(tags) -> bool:
-    return bool(_tag_set(tags) & _AI_DRAFT_TAGS)
-
-
 def _claim_ticket(ticket_id: str) -> bool:
-    with _draft_lock:
-        if ticket_id in _claimed_tickets:
-            return False
-        _claimed_tickets.add(ticket_id)
-        return True
+    _claims.ttl = _claim_ttl()
+    return _claims.claim(ticket_id)
 
 
 def _release_ticket(ticket_id: str) -> None:
-    with _draft_lock:
-        _claimed_tickets.discard(ticket_id)
+    _claims.release(ticket_id)
 
 
 def _zendesk_get(path: str) -> dict | None:
@@ -527,7 +518,8 @@ def post_ticket_update(
     assignee_email: str | None = None,
     allow_solve: bool = False,
 ) -> tuple[bool, str]:
-    # Testing: a public reply and Solved are allowed only for the test requester.
+    # A customer-visible reply or Solved has to pass allow_solve.
+    # Callers that omit it stay on a private note.
     if not allow_solve:
         public = False
         if status == "solved":
@@ -563,15 +555,34 @@ def solve_without_reply(ticket_id: str, extra_tags: list[str] | None = None) -> 
     return _put_ticket(ticket_id, ticket)
 
 
+def _matcher_draft(tags: str, subject: str, description: str, extra: list[str]) -> flow.Draft:
+    agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
+    public = "" if matched == "none" else note_body
+    needs = agent == "rafa" or matched == "none" or flow.promises_handoff(public)
+    reason = "Rafa drafts only. A person sends." if agent == "rafa" else "matcher"
+    if matched == "none":
+        reason = "no hub match"
+    if matched and matched != "none":
+        extra.append("ai_hub_match")
+    return flow.Draft(
+        agent=agent,
+        matched=matched,
+        extra_tags=extra,
+        note_body=note_body,
+        public_body=public,
+        needs_human=needs,
+        reason=reason,
+    )
+
+
 def _build_draft(
     tags: str,
     subject: str,
     description: str,
     requester_name: str,
     requester_email: str = "",
-) -> tuple[str, str, list[str], str, str]:
-    """Returns agent, matched, tags, private note, and the customer reply with no staff footer."""
-    extra: list[str] = []
+) -> flow.Draft:
+    """Staff note plus the customer reply. The staff footer is not the public body."""
     if _backend() in {"ollama", "claude"}:
         try:
             from agents.loop import run_agent
@@ -586,153 +597,461 @@ def _build_draft(
                 str(requester_email),
             )
             note_body, extra, matched = _compose_generated_note(result)
-            return agent, matched, extra, note_body, result.email.strip()
+            return flow.Draft(
+                agent=result.agent,
+                matched=matched,
+                extra_tags=extra,
+                note_body=note_body,
+                public_body=result.email.strip(),
+                needs_human=bool(result.needs_human) or result.agent == "rafa",
+                reason=result.reason,
+            )
         except Exception:
             log.exception("agent generate failed; falling back to GitHub matcher")
-            agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
-            extra = ["ai_draft_only", f"ai_{agent}", "ai_matcher_fallback"]
-            if matched and matched != "none":
-                extra.append("ai_hub_match")
-            return agent, matched, extra, note_body, ""
-    agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
-    extra = ["ai_draft_only", f"ai_{agent}"]
-    if matched and matched != "none":
-        extra.append("ai_hub_match")
-    return agent, matched, extra, note_body, ""
+            return _matcher_draft(tags, subject, description, ["ai_matcher_fallback"])
+    return _matcher_draft(tags, subject, description, [])
 
 
-def _follow_up(ticket_id: str, latest_comment: str, recipient: str = "") -> None:
-    if not recipient.strip():
-        recipient = fetch_ticket_recipient(ticket_id)
+def _load_context(ticket_id: str) -> dict | None:
+    """Ticket plus comments. None when the ticket itself cannot be read."""
+    ticket_data = _zendesk_get(f"tickets/{ticket_id}.json")
+    ticket = (ticket_data or {}).get("ticket")
+    if not ticket:
+        return None
+    packed = _zendesk_get(f"tickets/{ticket_id}/comments.json?include=users")
+    comments_ok = packed is not None
+    users = {
+        str(user.get("id")): user
+        for user in (packed or {}).get("users") or []
+        if user.get("id") is not None
+    }
+    requester_id = str(ticket.get("requester_id") or "")
+    requester = users.get(requester_id) or {}
+    if requester_id and not requester.get("email"):
+        user_payload = _zendesk_get(f"users/{requester_id}.json") or {}
+        requester = user_payload.get("user") or requester
+        if requester.get("id") is not None:
+            users[str(requester.get("id"))] = requester
+    bot = _bot_email()
+    if bot and not any(flow.author_is_bot(author_id, users, bot) for author_id in users):
+        found = _zendesk_get("users/search.json?query=" + quote(f"email:{bot}"))
+        for user in (found or {}).get("users") or []:
+            if str(user.get("email") or "").strip().lower() == bot and user.get("id") is not None:
+                users[str(user.get("id"))] = user
+                break
+    comments = [flow.comment_from_api(row) for row in (packed or {}).get("comments") or []]
+    return {
+        "subject": str(ticket.get("subject") or ""),
+        "description": str(ticket.get("description") or ""),
+        "tags": ticket.get("tags") or [],
+        "recipient": str(ticket.get("recipient") or ""),
+        "status": str(ticket.get("status") or ""),
+        "requester_id": requester_id,
+        "requester_email": str(requester.get("email") or ""),
+        "requester_name": str(requester.get("name") or ""),
+        "comments_ok": comments_ok,
+        "comments": comments,
+        "users": users,
+    }
+
+
+def _tag_text(tags) -> str:
+    if isinstance(tags, list):
+        return " ".join(str(tag) for tag in tags)
+    return str(tags or "")
+
+
+def _message_from_context(ctx: dict, hints: dict) -> tuple[str, str, str, str, str]:
+    """subject, description, tags, requester name, requester email."""
+    subject = str(ctx.get("subject") or hints.get("subject") or "")
+    tags = _tag_text(ctx.get("tags") or hints.get("tags") or "")
+    name = str(ctx.get("requester_name") or hints.get("requester_name") or "")
+    email = str(ctx.get("requester_email") or hints.get("requester_email") or "")
+    comments = ctx.get("comments") or []
+    requester_id = str(ctx.get("requester_id") or "")
+    conversation = flow.render_conversation(comments, requester_id) if ctx.get("comments_ok") else ""
+    if conversation:
+        description = (
+            "Full public conversation. Answer the latest customer message. "
+            "Do not answer a Staff message. "
+            "Do not say you have passed this to the team unless a person has to do something you cannot do.\n\n"
+            + conversation
+        )
+    else:
+        description = str(ctx.get("description") or hints.get("description") or "")
+    return subject, description, tags, name, email
+
+
+def _customer_text(ctx: dict, hints: dict, subject: str) -> str:
+    comments = ctx.get("comments") or []
+    latest = flow.latest_customer_text(comments, str(ctx.get("requester_id") or ""))
+    if latest:
+        return latest
+    return str(ctx.get("description") or hints.get("description") or subject or "")
+
+
+def _ensure_open(ticket_id: str, assignee: str) -> None:
+    if _ticket_status(ticket_id) == "open":
+        return
+    custom_id = _default_open_custom_status_id()
+    fields: dict = {"status": "open"}
+    if assignee:
+        fields["assignee_email"] = assignee
+    if custom_id:
+        fields["custom_status_id"] = custom_id
+    _put_ticket(ticket_id, fields)
+
+
+def _pack(
+    disposition: flow.Disposition,
+    *,
+    posted: bool,
+    assigned: bool,
+    detail: str = "",
+    reply: str | None = None,
+) -> dict:
+    # Dry-run uses _plan. Here, name the assignee only when the assign stuck.
+    assignee = disposition.assignee_email if disposition.action == "handoff" and assigned else ""
+    return {
+        "action": disposition.action,
+        "agent": disposition.agent,
+        "reason": disposition.reason,
+        "reply": disposition.public_body if reply is None else reply,
+        "assignee": assignee,
+        "lane": disposition.lane,
+        "tags": list(disposition.tags),
+        "posted": posted,
+        "assigned": assigned,
+        "detail": detail,
+    }
+
+
+def _apply_handoff(ticket_id: str, disposition: flow.Disposition) -> dict:
+    """Public holding reply only claims a handoff when the assignee sticks."""
+    assignee = disposition.assignee_email
+    public = (disposition.public_body or "").strip()
+    tags = list(disposition.tags)
+    note = disposition.internal_note or ""
+
+    def _note() -> None:
+        if note:
+            post_internal_note(ticket_id, note, ["ai_handoff_note"])
+
+    if not public:
+        assigned = assign_open_for_human(ticket_id, "", assignee, force=True) if assignee else False
+        _note()
+        return _pack(
+            disposition,
+            posted=bool(note),
+            assigned=assigned,
+            reply="",
+            detail="assigned" if assigned else "assign failed",
+        )
+
+    ticket: dict = {
+        "comment": {"body": public, "public": True},
+        "status": "open",
+        "additional_tags": tags,
+    }
+    if assignee:
+        ticket["assignee_email"] = assignee
+    ok, detail = _put_ticket(ticket_id, ticket)
+    if ok:
+        _ensure_open(ticket_id, assignee)
+        _note()
+        if "ai_broken_link" in tags and assignee:
+            _flag_repeated_broken_link(ticket_id, assignee)
+        return _pack(disposition, posted=True, assigned=bool(assignee), reply=public, detail=detail)
+
+    assigned = assign_open_for_human(ticket_id, "", assignee, force=True) if assignee else False
+    if assigned:
+        ok2, detail2 = post_ticket_update(
+            ticket_id,
+            public,
+            public=True,
+            status="open",
+            allow_solve=True,
+            extra_tags=tags,
+        )
+        _note()
+        return _pack(
+            disposition,
+            posted=ok2,
+            assigned=True,
+            reply=public if ok2 else "",
+            detail=detail2,
+        )
+
+    safe = public if not disposition.claims_handoff else flow.public_text_for_handoff(public, assigned=False)
+    reply = ""
+    posted = False
+    if safe:
+        safe_tags = [tag for tag in tags if tag != flow.TAG_ASSIGNED]
+        ok3, detail = post_ticket_update(
+            ticket_id,
+            safe,
+            public=True,
+            status="open",
+            allow_solve=True,
+            extra_tags=safe_tags,
+        )
+        posted = ok3
+        reply = safe if ok3 else ""
+    _note()
+    return _pack(disposition, posted=posted or bool(note), assigned=False, reply=reply, detail=detail)
+
+
+def _apply_disposition(ticket_id: str, disposition: flow.Disposition) -> dict:
+    action = disposition.action
+    if action == "skip_srv":
+        skip_srv_ticket(ticket_id)
+        return _pack(disposition, posted=True, assigned=False, reply="", detail="srv skipped")
+    if action == "solve_silent":
+        ok, detail = solve_without_reply(ticket_id, disposition.tags)
+        return _pack(disposition, posted=ok, assigned=False, reply="", detail=detail)
+    if action == "solve":
+        ok, detail = post_ticket_update(
+            ticket_id,
+            disposition.public_body,
+            public=True,
+            status="solved",
+            allow_solve=True,
+            extra_tags=disposition.tags,
+        )
+        if ok:
+            return _pack(disposition, posted=True, assigned=False, reply=disposition.public_body, detail=detail)
+        log.error("public solve failed ticket_id=%s detail=%s", ticket_id, detail)
+        fallback = flow.Disposition(
+            action="handoff",
+            agent=disposition.agent or "maya",
+            reason="public solve failed",
+            public_body=disposition.public_body,
+            internal_note="Public solve failed. Left open for the team.\n\n" + disposition.public_body,
+            status="open",
+            assignee_email=disposition.assignee_email or maya_human_assignee(disposition.lane or "mmi"),
+            tags=["ai_assigned_human", "ai_generated", f"ai_{disposition.agent or 'maya'}", "ai_public_reply"],
+            lane=disposition.lane,
+            claims_handoff=flow.promises_handoff(disposition.public_body),
+        )
+        failed = _apply_handoff(ticket_id, fallback)
+        failed["reason"] = "public solve failed"
+        return failed
+    if action == "handoff":
+        return _apply_handoff(ticket_id, disposition)
+    return _pack(disposition, posted=False, assigned=False, detail="nothing to do")
+
+
+def _plan(disposition: flow.Disposition) -> dict:
+    return {
+        "action": disposition.action,
+        "agent": disposition.agent,
+        "reason": disposition.reason,
+        "reply": disposition.public_body,
+        "assignee": disposition.assignee_email if disposition.action == "handoff" else "",
+        "lane": disposition.lane,
+        "tags": list(disposition.tags),
+        "posted": False,
+        "assigned": False,
+        "detail": "dry-run",
+    }
+
+
+def _skip(reason: str, *, lane: str = "", agent: str = "") -> dict:
+    return {
+        "action": "skip",
+        "agent": agent,
+        "reason": reason,
+        "reply": "",
+        "assignee": "",
+        "lane": lane,
+        "tags": [],
+        "posted": False,
+        "assigned": False,
+        "detail": reason,
+    }
+
+
+def _webhook_skip(ctx: dict, bot_email: str) -> str | None:
+    if not ctx.get("comments_ok"):
+        return "comments unavailable"
+    requester_id = str(ctx.get("requester_id") or "")
+    comments = ctx.get("comments") or []
+    if not requester_id:
+        return "requester unknown"
+    if not comments:
+        return None
+    reason = flow.skip_reason_for_latest(comments, requester_id)
+    if reason:
+        return reason
+    if flow.other_agent_replied(comments, requester_id, ctx.get("users") or {}, bot_email):
+        return "a person already replied"
+    return None
+
+
+def _maybe_refresh(ticket_id: str, ctx: dict, loader, backfill: bool, live: bool, bot_email: str):
+    """Return (ctx, skip_reason). Reloads before acting. None loader result keeps ctx."""
+    if loader is None:
+        return ctx, None
+    fresh = loader(ticket_id)
+    if not fresh:
+        if backfill and live:
+            return ctx, "recheck failed"
+        return ctx, None
+    if backfill:
+        lane = maya_lane(str(fresh.get("recipient") or ctx.get("recipient") or ""))
+        reason = flow.backfill_skip_reason(
+            str(fresh.get("status") or ""),
+            lane,
+            fresh.get("comments") or [],
+            str(fresh.get("requester_id") or ""),
+            comments_ok=bool(fresh.get("comments_ok")),
+        )
+        if reason:
+            return fresh, "recheck: " + reason
+        return fresh, None
+    if live:
+        reason = _webhook_skip(fresh, bot_email)
+        if reason:
+            return fresh, reason
+    return fresh, None
+
+
+def _process_ticket(
+    ticket_id: str,
+    hints: dict | None = None,
+    *,
+    live: bool = True,
+    backfill: bool = False,
+    loader=None,
+    drafter=None,
+    poster=None,
+    bot_email: str | None = None,
+) -> dict:
+    """Run Maya's answer flow for one ticket. Dry-run posts nothing."""
+    hints = hints or {}
+    loader = loader or _load_context
+    drafter = drafter or _build_draft
+    poster = poster or _apply_disposition
+    bot = _bot_email() if bot_email is None else bot_email
+    ctx = loader(ticket_id)
+    if not ctx:
+        return _skip("ticket unavailable")
+    recipient = str(ctx.get("recipient") or hints.get("recipient") or "")
     lane = maya_lane(recipient)
     if lane == "srv":
-        skip_srv_ticket(ticket_id)
-        return
-    assign_open_for_human(ticket_id, latest_comment, maya_human_assignee(lane))
+        disposition = flow.decide(
+            agent="maya",
+            lane="srv",
+            needs_human=False,
+            matched="",
+            public_body="",
+            note_body="",
+            assignee_email="",
+        )
+        if live:
+            return poster(ticket_id, disposition)
+        return _plan(disposition)
+
+    if backfill:
+        reason = flow.backfill_skip_reason(
+            str(ctx.get("status") or ""),
+            lane,
+            ctx.get("comments") or [],
+            str(ctx.get("requester_id") or ""),
+            comments_ok=bool(ctx.get("comments_ok")),
+        )
+        if reason:
+            return _skip(reason, lane=lane)
+    else:
+        reason = _webhook_skip(ctx, bot)
+        if reason:
+            return _skip(reason, lane=lane)
+
+    subject, description, tags, name, email = _message_from_context(ctx, hints)
+    customer_text = _customer_text(ctx, hints, subject)
+    assignee = maya_human_assignee(lane)
+    if asks_for_human(subject, customer_text):
+        disposition = flow.human_request_disposition(lane, assignee)
+    else:
+        first_customer = flow.latest_customer_comment(ctx.get("comments") or [], str(ctx.get("requester_id") or ""))
+        draft = drafter(
+            tags=tags,
+            subject=subject,
+            description=description,
+            requester_name=name,
+            requester_email=email,
+        )
+        ctx, refresh_reason = _maybe_refresh(ticket_id, ctx, loader, backfill, live, bot)
+        if refresh_reason:
+            return _skip(refresh_reason, lane=lane)
+        latest = flow.latest_customer_comment(ctx.get("comments") or [], str(ctx.get("requester_id") or ""))
+        if (
+            latest
+            and first_customer
+            and latest.id
+            and latest.id != first_customer.id
+            and not asks_for_human(subject, latest.body)
+        ):
+            subject, description, tags, name, email = _message_from_context(ctx, hints)
+            draft = drafter(
+                tags=tags,
+                subject=subject,
+                description=description,
+                requester_name=name,
+                requester_email=email,
+            )
+        elif latest and asks_for_human(subject, latest.body):
+            disposition = flow.human_request_disposition(lane, assignee)
+            log.info(
+                "answer ticket_id=%s lane=%s action=%s agent=%s live=%s",
+                ticket_id,
+                lane,
+                disposition.action,
+                disposition.agent,
+                live,
+            )
+            if not live:
+                return _plan(disposition)
+            return poster(ticket_id, disposition)
+        disposition = flow.decide(
+            agent=draft.agent,
+            lane=lane,
+            needs_human=draft.needs_human,
+            matched=draft.matched,
+            public_body=draft.public_body,
+            note_body=draft.note_body,
+            assignee_email=assignee,
+            reason=draft.reason,
+        )
+        disposition = flow.merge_tags(disposition, draft.extra_tags)
+    log.info(
+        "answer ticket_id=%s lane=%s action=%s agent=%s live=%s reason=%s",
+        ticket_id,
+        lane,
+        disposition.action,
+        disposition.agent,
+        live,
+        disposition.reason,
+    )
+    if not live:
+        return _plan(disposition)
+    return poster(ticket_id, disposition)
 
 
-def _draft_and_post(
-    ticket_id: str,
-    subject: str,
-    description: str,
-    tags: str,
-    requester_name: str,
-    requester_email: str = "",
-    latest_comment: str = "",
-    recipient: str = "",
-) -> None:
+def _run_webhook(ticket_id: str, hints: dict | None = None) -> None:
     try:
-        if not recipient.strip():
-            recipient = fetch_ticket_recipient(ticket_id)
-        lane = maya_lane(recipient)
-        if lane == "srv":
-            skip_srv_ticket(ticket_id)
-            _release_ticket(ticket_id)
-            return
-        agent_guess = route_agent(str(tags), str(subject), str(description))
-        handoff_to = (
-            maya_human_assignee(lane)
-            if agent_guess == "maya" or lane == "mmo"
-            else _human_assignee_email()
-        )
-        if assign_open_for_human(ticket_id, latest_comment, handoff_to):
-            log.info("human handoff only ticket_id=%s lane=%s assignee=%s", ticket_id, lane, handoff_to)
-            _release_ticket(ticket_id)
-            return
-        live_tags = fetch_ticket_tags(ticket_id)
-        if _already_drafted(tags) or _already_drafted(live_tags):
-            log.info("skip already drafted ticket_id=%s", ticket_id)
-            return
-        if not requester_email.strip():
-            requester_email = fetch_requester_email(ticket_id)
-        agent, matched, extra, note_body, public_body = _build_draft(
-            tags, subject, description, requester_name, requester_email
-        )
-        requester = requester_email.strip().lower()
-        disposition = "private_note"
-        maya_live = agent == "maya"
-        # Quinn and Rafa stay private except for the test requester. Maya replies in public.
-        solve_public = (
-            bool(public_body)
-            and matched == "generated"
-            and (maya_live or requester in _public_solve_emails())
-        )
-        if maya_live and matched == "no_reply":
-            posted, error = solve_without_reply(
-                ticket_id,
-                ["ai_generated", "ai_maya", "ai_no_reply", "ai_solved"],
-            )
-            disposition = "solved_no_reply"
-            if not posted:
-                _release_ticket(ticket_id)
-        elif maya_live and public_body and not solve_public:
-            posted, error = post_ticket_update(
-                ticket_id,
-                public_body,
-                public=True,
-                status="open",
-                allow_solve=True,
-                assignee_email=handoff_to,
-                extra_tags=["ai_generated", "ai_maya", "ai_public_reply", "ai_assigned_human", *extra],
-            )
-            if posted:
-                post_internal_note(
-                    ticket_id,
-                    "Left open for the team. Do not solve this until the action in the public reply is done.\n\n"
-                    + note_body,
-                    ["ai_handoff_note"],
-                )
-                if _ticket_status(ticket_id) != "open":
-                    assign_open_for_human(ticket_id, latest_comment, handoff_to, force=True)
-                if "ai_broken_link" in extra:
-                    _flag_repeated_broken_link(ticket_id, handoff_to)
-            disposition = "public_open"
-            if not posted:
-                _release_ticket(ticket_id)
-        elif maya_live and not solve_public:
-            post_internal_note(
-                ticket_id,
-                note_body or "Internal alert. No customer reply. Leave this open.",
-                ["ai_handoff_note", *extra],
-            )
-            posted = assign_open_for_human(ticket_id, latest_comment, handoff_to, force=True)
-            error = "" if posted else "assign failed"
-            disposition = f"assigned_{lane}"
-            if not posted:
-                _release_ticket(ticket_id)
-        elif solve_public:
-            posted, error = post_ticket_update(
-                ticket_id,
-                public_body,
-                public=True,
-                status="solved",
-                allow_solve=True,
-                extra_tags=["ai_generated", f"ai_{agent}", "ai_public_reply", "ai_solved"],
-            )
-            disposition = "public_solved"
-            if not posted and maya_live:
-                posted = assign_open_for_human(ticket_id, latest_comment, handoff_to, force=True)
-                error = "" if posted else error
-                disposition = f"public_solve_failed_assigned_{lane}"
-            elif not posted:
-                posted, error = post_internal_note(ticket_id, note_body, extra)
-                disposition = "public_solve_failed_private_note"
-        else:
-            posted, error = post_internal_note(ticket_id, note_body, extra)
+        outcome = _process_ticket(ticket_id, hints, live=True, backfill=False)
         log.info(
-            "draft backend=%s agent=%s matched=%s ticket_id=%s disposition=%s posted=%s error=%s",
-            _backend(),
-            agent,
-            matched,
+            "webhook done ticket_id=%s action=%s posted=%s assigned=%s detail=%s",
             ticket_id,
-            disposition,
-            posted,
-            error,
+            outcome.get("action"),
+            outcome.get("posted"),
+            outcome.get("assigned"),
+            outcome.get("detail"),
         )
-        if not posted:
-            _release_ticket(ticket_id)
     except Exception:
-        log.exception("zendesk note crashed ticket_id=%s", ticket_id)
+        log.exception("webhook crashed ticket_id=%s", ticket_id)
+    finally:
         _release_ticket(ticket_id)
 
 
@@ -774,7 +1093,9 @@ def health() -> dict:
         ),
         "agent_actions": (os.getenv("AGENT_ACTIONS") or "propose").strip().lower(),
         "maya_live": True,
+        "public_reply_scope": "confident answers are public for every requester",
         "public_solve_emails": sorted(_public_solve_emails()),
+        "claim_ttl_seconds": _claim_ttl(),
         "mmi_assignee_email": maya_human_assignee("mmi"),
         "mmo_assignee_email": maya_human_assignee("mmo"),
         "mmi_event_sheets": _event_sheet_codes(),
@@ -782,37 +1103,38 @@ def health() -> dict:
     }
 
 
-@app.post("/zendesk/webhook")
-async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -> JSONResponse:
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-
+def _hints_from_body(body: dict) -> dict:
     ticket = body.get("ticket") if isinstance(body.get("ticket"), dict) else {}
-    ticket_id = _ticket_id(body)
-    subject = body.get("subject") or ticket.get("subject") or ""
-    description = body.get("description") or ticket.get("description") or ""
-    requester_name = (
-        body.get("requester_name")
-        or (ticket.get("requester") or {}).get("name")
-        or ""
-    )
-    requester_email = (
-        body.get("requester_email")
-        or (ticket.get("requester") or {}).get("email")
-        or body.get("email")
-        or ""
-    )
     tags = body.get("tags") or ticket.get("tags") or ""
     if isinstance(tags, list):
-        tags = " ".join(str(t) for t in tags)
-    latest_comment = str(
-        body.get("latest_comment") or body.get("comment") or ticket.get("latest_comment") or ""
-    )
-    recipient = str(body.get("recipient") or ticket.get("recipient") or "")
+        tags = " ".join(str(tag) for tag in tags)
+    return {
+        "subject": body.get("subject") or ticket.get("subject") or "",
+        "description": body.get("description") or ticket.get("description") or "",
+        "requester_name": body.get("requester_name") or (ticket.get("requester") or {}).get("name") or "",
+        "requester_email": (
+            body.get("requester_email")
+            or (ticket.get("requester") or {}).get("email")
+            or body.get("email")
+            or ""
+        ),
+        "tags": tags,
+        "recipient": body.get("recipient") or ticket.get("recipient") or "",
+    }
 
-    log.info("webhook received ticket_id=%s subject=%s", ticket_id, subject)
+
+@app.post("/zendesk/webhook")
+async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -> JSONResponse:
+    raw = await request.body()
+    body = flow.parse_webhook_payload(raw)
+    ticket_id = flow.webhook_ticket_id(body)
+    hints = _hints_from_body(body)
+    log.info(
+        "webhook received ticket_id=%s subject=%s partial=%s",
+        ticket_id,
+        hints.get("subject"),
+        bool(body.get("_partial")),
+    )
 
     if not ticket_id:
         return JSONResponse(
@@ -821,20 +1143,6 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
                 "ticket_id": None,
                 "skipped": "no ticket id in payload",
                 "note_posted": False,
-            }
-        )
-
-    # A reply on a ticket we already answered must still be able to reopen it.
-    # Also catch the human request from the webhook body before another solve.
-    if _already_drafted(tags) or asks_for_human("", latest_comment):
-        log.info("webhook follow-up ticket_id=%s", ticket_id)
-        background_tasks.add_task(_follow_up, ticket_id, latest_comment, recipient)
-        return JSONResponse(
-            {
-                "received": True,
-                "accepted": True,
-                "ticket_id": ticket_id,
-                "handoff_check": True,
             }
         )
 
@@ -849,18 +1157,9 @@ async def zendesk_webhook(request: Request, background_tasks: BackgroundTasks) -
             }
         )
 
-    # Ack Zendesk immediately so it does not retry while Claude is still running.
-    background_tasks.add_task(
-        _draft_and_post,
-        ticket_id,
-        str(subject),
-        str(description),
-        str(tags),
-        str(requester_name),
-        str(requester_email),
-        latest_comment,
-        recipient,
-    )
+    # Ack Zendesk immediately. The run reads the ticket and comments itself,
+    # so a broken trigger body is enough as long as it contains the ticket id.
+    background_tasks.add_task(_run_webhook, ticket_id, hints)
     return JSONResponse(
         {
             "received": True,

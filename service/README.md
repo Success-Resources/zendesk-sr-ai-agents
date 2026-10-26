@@ -2,9 +2,11 @@
 
 Step 5: on startup (and every 10 minutes) the service **downloads** `Success-Resources/zendesk-sr-ai-agents` from GitHub and reads `knowledge-hub/`. If GitHub is unreachable, it uses the bundled copy in `service/knowledge-hub`.
 
-The internal note is the **approved email** from the hub — the text staff should send to the customer. It is still `public: false`, except for requester addresses in `ZENDESK_PUBLIC_SOLVE_EMAILS`. Those tickets get a public reply and status **solved**. If the customer asks to speak to a person, on a new ticket or in a reply on the same ticket, the status is set to **open** and the ticket is assigned to `ZENDESK_HUMAN_ASSIGNEE_EMAIL`. No note is added.
+A finished Maya or Quinn answer is a **public reply** and status **solved** (`ai_answered`). A handoff (refunds, anything Rafa drafts, a missing confirmation, a request for a person) is a short public reply or the customer email, status **open**, an internal note, and an assignee (`ai_assigned_human`): MMI to `ZENDESK_MMI_ASSIGNEE_EMAIL` (default `meda.c@srglobal.com`), MMO (`mmo@`) to `ZENDESK_MMO_ASSIGNEE_EMAIL` (default `alina.last@srglobal.com`). `srv@srglobal.com` is tagged `ai_skipped_srv` and left alone. Rafa's draft is the internal note, not the public reply. `ZENDESK_PUBLIC_SOLVE_EMAILS` does not gate replies.
 
-That reply only reaches the service if a second Zendesk trigger fires on the comment. Conditions, all of them: Ticket is Updated, Comment is present, Comment is public. Do not add “Requester is (current user)” and do not exclude the `ai_generated` tag — both stop the reply from being seen. The reply must be a public comment. Same webhook URL and JSON body as the create trigger, including `"latest_comment": "{{ticket.latest_comment}}"`.
+The service loads the ticket and comments from the API. The webhook only needs a ticket id, because trigger JSON often breaks on ticket text. A follow-up runs only when the latest public comment is the customer's, and only when no human agent has already replied. Maya's own public reply does not start another run.
+
+Backfill (dry-run unless `--live`): `python scripts/backfill.py --help`.
 
 - `GET /health` — includes `source` (`github:...` or `bundled`) and `entries`
 - `POST /zendesk/webhook`
@@ -21,3 +23,6 @@ Env vars (Redeploy after changing):
 | `GITHUB_TOKEN` | Only if the repo is private |
 | `GITHUB_KNOWLEDGE_REPO` | default `Success-Resources/zendesk-sr-ai-agents` |
 | `GITHUB_KNOWLEDGE_BRANCH` | default `main` |
+| `MAYA_CLAIM_TTL_SECONDS` | optional, default `900`. In-flight ticket claim expires after this many seconds |
+| `ZENDESK_MMI_ASSIGNEE_EMAIL` | optional, default `meda.c@srglobal.com` |
+| `ZENDESK_MMO_ASSIGNEE_EMAIL` | optional, default `alina.last@srglobal.com` |
