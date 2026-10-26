@@ -38,6 +38,8 @@ from knowledge import draft_note, ensure_hub, knowledge_status, route_agent
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
+from agents import forward, publictext  # noqa: E402
+
 load_dotenv(Path(__file__).resolve().parent / ".env")
 load_dotenv(_ROOT / ".env")
 
@@ -692,6 +694,59 @@ def _customer_text(ctx: dict, hints: dict, subject: str) -> str:
     return str(ctx.get("description") or hints.get("description") or subject or "")
 
 
+def _customer_bodies(ctx: dict) -> list[str]:
+    requester_id = str(ctx.get("requester_id") or "")
+    bodies = [
+        comment.body
+        for comment in flow.sorted_comments(ctx.get("comments") or [])
+        if comment.public and str(comment.author_id) == requester_id
+    ]
+    if not bodies and ctx.get("description"):
+        bodies = [str(ctx.get("description"))]
+    return bodies
+
+
+def _greeting_for(ctx: dict, name: str) -> tuple[str, str]:
+    """Greeting with the customer's real first name, and the name for the note."""
+    bodies = _customer_bodies(ctx)
+    greet = publictext.greeting(name, bodies)
+    first = publictext.first_name(name, bodies)
+    who = name.strip() if publictext.first_name(name) else (first or name.strip())
+    return greet, who
+
+
+def _person(ctx: dict, name: str, email: str, fallback: str) -> dict:
+    """Greeting and note facts. The note keeps every customer turn, not only the latest."""
+    greet, who = _greeting_for(ctx, name)
+    turns = [flow.above_quote(body) for body in _customer_bodies(ctx)[-3:]]
+    turns = [turn for turn in turns if turn]
+    text = " / ".join(turns) if turns else fallback
+    return dict(greeting=greet, customer_text=text, customer_name=who, customer_email=email)
+
+
+def _forward_note(ctx: dict, hints: dict, subject: str, staff_email: str, assignee: str, lane: str, customer_text: str) -> str:
+    """Keep the forwarded original in full: customer, email, every question, KB suggestions."""
+    candidates = [*_customer_bodies(ctx), str(ctx.get("description") or hints.get("description") or "")]
+    for raw in candidates:
+        parsed = forward.parse(raw)
+        if parsed and (parsed.body or parsed.sender_email):
+            return forward.note(parsed, staff_email=staff_email, subject=subject, assignee=assignee, lane=lane)
+    # No forward block: keep the whole staff message, never cut at "From:".
+    raw = (customer_text or candidates[-1] or "").strip()
+    qs = forward.questions(raw)
+    lines = [
+        f"Internal message from {staff_email}. No public reply was sent.",
+        f"Subject: {subject}",
+    ]
+    if qs:
+        lines.append("Questions, with a suggested answer from the KB (internal only):")
+        for n, question in enumerate(qs, 1):
+            lines.append(f"{n}. {question}\n   Suggested: {forward.suggest(question)}")
+    lines.append("Needed: answer the original customer, not the staff sender.")
+    lines.append("\nFull message:\n" + raw[:6000])
+    return "\n".join(lines)
+
+
 def _ensure_open(ticket_id: str, assignee: str) -> None:
     if _ticket_status(ticket_id) == "open":
         return
@@ -1013,11 +1068,7 @@ def _process_ticket(
             needs_human=True,
             matched="forward",
             public_body="",
-            note_body=(
-                f"Internal forward from {email}. No public reply.\n"
-                f"Subject: {subject}\n\n{plain[:2000]}\n\n"
-                "Needed: answer the original customer, not the staff sender."
-            ),
+            note_body=_forward_note(ctx, hints, subject, email, assignee, lane, customer_text),
             assignee_email=assignee,
             reason="internal_forward",
             forward=True,
@@ -1025,8 +1076,9 @@ def _process_ticket(
         if live:
             return poster(ticket_id, disposition)
         return _plan(disposition)
+    person = _person(ctx, name, email, plain or customer_text)
     if asks_for_human(subject, customer_text):
-        disposition = flow.human_request_disposition(lane, assignee)
+        disposition = flow.human_request_disposition(lane, assignee, **person)
     else:
         first_customer = flow.latest_customer_comment(ctx.get("comments") or [], str(ctx.get("requester_id") or ""))
         draft = drafter(
@@ -1048,6 +1100,7 @@ def _process_ticket(
             and not asks_for_human(subject, latest.body)
         ):
             subject, description, tags, name, email = _message_from_context(ctx, hints)
+            person = _person(ctx, name, email, flow.routing_text(latest.body))
             draft = drafter(
                 tags=tags,
                 subject=subject,
@@ -1056,7 +1109,7 @@ def _process_ticket(
                 requester_email=email,
             )
         elif latest and asks_for_human(subject, latest.body):
-            disposition = flow.human_request_disposition(lane, assignee)
+            disposition = flow.human_request_disposition(lane, assignee, **person)
             log.info(
                 "answer ticket_id=%s lane=%s action=%s agent=%s live=%s",
                 ticket_id,
@@ -1077,6 +1130,7 @@ def _process_ticket(
             note_body=draft.note_body,
             assignee_email=assignee,
             reason=draft.reason,
+            **person,
         )
         disposition = flow.merge_tags(disposition, draft.extra_tags)
     log.info(

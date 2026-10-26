@@ -65,17 +65,18 @@ class HygieneTests(unittest.TestCase):
             "Hello,\n\nThe form is here.\n\nWarm regards,\nMaya\n\n"
             "To your success,\nCustomer Service Team\nSuccess Resources UK Limited"
         )
-        self.assertEqual(text.count("Warm regards"), 1)
+        self.assertEqual(text.count("Warm regards"), 0)
         self.assertNotIn("To your success", text)
         self.assertNotIn("Customer Service Team", text)
-        self.assertIn("Maya - your AI assistant", text)
+        self.assertNotIn("Maya", text)
+        self.assertTrue(text.endswith("The form is here."))
 
     def test_hello_uses_signed_name(self) -> None:
         self.assertEqual(_hello("Roellamyecampos"), "Hello,")
         self.assertEqual(_hello("Brunhildatan"), "Hello,")
-        self.assertEqual(_hello("Maria Faustino"), "Hello Maria,")
+        self.assertEqual(_hello("Maria Faustino"), "Hi Maria,")
         signed = "Please move my ticket.\n\nBest regards,\nMaria Faustino"
-        self.assertEqual(_hello("Roellamyecampos", signed), "Hello Maria,")
+        self.assertEqual(_hello("Roellamyecampos", signed), "Hi Maria,")
 
 
 class BehaviourTests(unittest.TestCase):
@@ -202,7 +203,7 @@ class BehaviourTests(unittest.TestCase):
         self.assertEqual(disposition.action, "handoff")
         self.assertNotIn("not an MMI", disposition.public_body)
         self.assertNotIn("flagged", disposition.public_body.lower())
-        self.assertEqual(disposition.public_body.count("Warm regards"), 1)
+        self.assertEqual(disposition.public_body.count("Warm regards"), 0)
         self.assertEqual(disposition.assignee_email, "alina.last@srglobal.com")
         self.assertEqual(disposition.status, "open")
 
@@ -244,7 +245,7 @@ class BehaviourTests(unittest.TestCase):
             disposition.public_body.lower(),
             r"(please|kindly|could you|can you).{0,40}order number",
         )
-        self.assertEqual(disposition.public_body.count("Warm regards"), 1)
+        self.assertEqual(disposition.public_body.count("Warm regards"), 0)
         self.assertEqual(disposition.internal_note, "")
 
     def test_noise_counterexamples_stay_open(self) -> None:

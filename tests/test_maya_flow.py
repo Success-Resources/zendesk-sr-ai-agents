@@ -121,7 +121,7 @@ class DecideTests(unittest.TestCase):
         self.assertEqual(disposition.assignee_email, "")
         self.assertIn("Quantum Leap dates", disposition.public_body)
         self.assertNotIn("Staff only", disposition.public_body)
-        self.assertEqual(disposition.public_body.count("Warm regards"), 1)
+        self.assertEqual(disposition.public_body.count("Warm regards"), 0)
         self.assertIn(flow.TAG_ANSWERED, disposition.tags)
 
     def test_rafa_draft_is_not_the_public_reply(self) -> None:
