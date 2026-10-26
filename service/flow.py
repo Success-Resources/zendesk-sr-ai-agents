@@ -7,9 +7,17 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from agents import publictext  # noqa: E402
 
 # Zendesk trigger templates often drop the comma before a later field, and
 # ticket text is not JSON-escaped. Recover the ticket id from either shape.
@@ -37,10 +45,19 @@ _STAFF_NOTE = re.compile(
 )
 _STAFF_FOOTER = re.compile(r"\n---\nStaff only\b", re.I)
 
-MAYA_SIGNOFF = "Warm regards,\nMaya - your AI assistant\nSuccess Resources Support"
-HOLDING_REPLY = (
-    "Thank you for your message. I have asked the team to look at this, and they will follow up from here.\n\n"
-    + MAYA_SIGNOFF
+# Zendesk appends the brand signature to every agent comment. Maya adds none.
+MAYA_SIGNOFF = ""
+HOLDING_BODY = "Thank you for your message. I have asked the team to look at this, and they will follow up from here."
+ACCESS_HOLDING_BODY = (
+    "Thank you for letting us know, and sorry for the trouble. "
+    "I have asked the team to check your access and send you a working link."
+)
+HOLDING_REPLY = "Hello,\n\n" + HOLDING_BODY
+_ACCESS_ISSUE = re.compile(
+    r"(can'?t|cannot|unable to|not able to|couldn'?t|could not)\s+(open|access|join|log ?in|watch|view|play)|"
+    r"\b(error|not available|unavailable|not working|doesn'?t work|does not work|broken link|"
+    r"link (?:is )?(?:broken|expired|invalid)|access denied|no access|login|log in|password|replay|recording)\b",
+    re.I,
 )
 _QUOTE_MARK = re.compile(r"\n-{2,}\s*original message|\nOn .+wrote:|\nFrom:|\n>", re.I)
 _SIG_CUT = re.compile(r"(?m)^--\s*$|^VAT No\b|^Registered office\b", re.I)
@@ -312,21 +329,96 @@ def routing_text(description: str) -> str:
 
 
 def single_signoff(text: str) -> str:
-    """One Maya sign-off. Extra regards blocks and brand footers are removed."""
-    body = (text or "").strip()
-    if not body:
-        return body
-    body = _SIGNOFF_BLOCK.sub("", body).strip()
-    kept = []
-    for line in body.splitlines():
-        if re.match(
-            r"(?i)^(to your success|customer service team|success resources uk limited|evelin)\b",
-            line.strip(),
-        ):
-            continue
-        kept.append(line)
-    body = "\n".join(kept).strip()
-    return f"{body}\n\n{MAYA_SIGNOFF}"
+    """No sign-off from Maya. The Zendesk brand signature is the only one."""
+    return publictext.strip_signoff(text)
+
+
+def is_access_issue(text: str) -> bool:
+    return bool(_ACCESS_ISSUE.search(text or ""))
+
+
+def holding_reply(greet: str = "Hello,", customer_text: str = "") -> str:
+    body = ACCESS_HOLDING_BODY if is_access_issue(customer_text) else HOLDING_BODY
+    return f"{(greet or 'Hello,').strip()}\n\n{body}"
+
+
+_ASSIGNEE_NAMES = {"meda.c@srglobal.com": "Meda", "alina.last@srglobal.com": "Alina"}
+_GENERIC_REASONS = {"", "ok", "needs_human", "generated", "generated_needs_human", "none", "a person"}
+
+
+def _needed_for(reason: str, agent: str, text: str) -> tuple[str, str]:
+    """(what is needed, what to check). Never a bare model reason such as "ok"."""
+    r = (reason or "").lower()
+    if "masterclass" in r:
+        return (
+            "send the customer working access to the Masterclass/webinar replay.",
+            "replay link status (is the link live?) and the customer's access for that product.",
+        )
+    if is_access_issue(text):
+        return (
+            "check the customer's access and send a working link.",
+            "account access for this event under the customer's email, and the access or replay link status.",
+        )
+    if "gdpr" in r:
+        return ("process the GDPR request and confirm by email.", "the legal deadline and the address on file.")
+    if "unsub" in r:
+        return ("remove this address from the mailing lists.", "every list the address is on.")
+    if "resend" in r or "confirm" in r:
+        return ("check the booking and resend the confirmation or e-ticket.", "the purchase email and the booking.")
+    if "transfer" in r:
+        return ("review the transfer (VIP, refund or legal case).", "the booking and the transfer form submission.")
+    if agent == "rafa" or "refund" in r or "rafa" in r:
+        return (
+            "review the payment, refund or invoice request (staff decision; Maya made no promise).",
+            "the payment record and the T&C (14-day cooling-off from purchase).",
+        )
+    if "person" in r or "human" in r:
+        return ("reply to the customer personally; they asked for a person.", "the conversation history.")
+    if r not in _GENERIC_REASONS and len(r) < 120:
+        return (f"reply to the customer ({reason.strip().rstrip('.')}).", "the customer's question below.")
+    return ("reply to the customer; Maya had no grounded KB answer.", "the customer's question below.")
+
+
+def handoff_note(
+    *,
+    lane: str,
+    assignee_email: str,
+    reason: str,
+    agent: str = "maya",
+    customer_text: str = "",
+    customer_name: str = "",
+    customer_email: str = "",
+    public_sent: bool = True,
+    draft: str = "",
+) -> str:
+    """Spec handoff note: who, what they asked, what is needed, what to check."""
+    who = _ASSIGNEE_NAMES.get((assignee_email or "").lower(), assignee_email or "a person")
+    asked = " / ".join(
+        re.sub(r"\s+", " ", publictext.strip_customer_signoff(part)).strip()
+        for part in (customer_text or "").split(" / ")
+    )
+    asked = re.sub(r"\s+", " ", above_quote(asked))[:600].strip()
+    draft = (draft or "").strip()
+    if len(draft) < 25 or draft.lower().rstrip(".") in {"ok", (reason or "").lower().rstrip(".")}:
+        draft = ""
+    needed, check = _needed_for(reason, (agent or "maya").lower(), f"{reason}\n{customer_text}")
+    head = f"Handoff to {who} ({lane or 'mmi'} lane). "
+    head += "Maya sent a short holding reply." if public_sent else "No public reply was sent."
+    lines = [head]
+    parts = [customer_name.strip()]
+    if customer_email.strip():
+        parts.append(f"<{customer_email.strip()}>")
+    customer = " ".join(part for part in parts if part)
+    if customer:
+        lines.append(f"Customer: {customer}")
+    if asked:
+        lines.append(f"Asked: {asked}")
+    lines.append(f"Needed: {needed}")
+    lines.append(f"What to check: {check}")
+    if draft:
+        label = f"{(agent or 'maya').title()} draft (not sent to the customer)"
+        lines.append(f"\n{label}:\n{publictext.strip_signoff(draft)}")
+    return "\n".join(lines)
 
 
 def public_is_unsafe(text: str) -> bool:
@@ -367,17 +459,19 @@ def strip_handoff_claims(text: str) -> str:
     return "\n\n".join(kept).strip()
 
 
-def public_text_for_handoff(email: str, *, assigned: bool) -> str:
+def public_text_for_handoff(email: str, *, assigned: bool, greet: str | None = None) -> str:
     """Customer text for a handoff. A handoff claim stays only when we assign."""
     text = without_staff_footer(email)
+    if greet is None:
+        greet = publictext.existing_greeting(text) or "Hello,"
     if not text or is_staff_only_text(text):
-        return HOLDING_REPLY if assigned else ""
+        return holding_reply(greet) if assigned else ""
     if assigned or not promises_handoff(text):
-        return text
-    stripped = strip_handoff_claims(text)
+        return publictext.clean_public(text, greet)
+    stripped = strip_handoff_claims(publictext.strip_signoff(text))
     if not stripped or is_staff_only_text(stripped):
         return ""
-    return stripped
+    return publictext.clean_public(stripped, greet)
 
 
 def decide(
@@ -392,13 +486,20 @@ def decide(
     reason: str = "",
     noise_tag: str = "",
     forward: bool = False,
+    greeting: str = "Hello,",
+    customer_text: str = "",
+    customer_name: str = "",
+    customer_email: str = "",
 ) -> Disposition:
     """Maya posts the public text. Noise is solved with no reply and no assignee.
 
     Quinn and Rafa never write the public reply. Their draft stays on the
     internal note, and that path still assigns Meda or Alina. srv@ is skipped.
+    Public text never carries a sign-off (Zendesk adds the one signature) and
+    always opens with a greeting.
     """
     agent = (agent or "maya").lower()
+    greet = (greeting or "Hello,").strip()
     if lane == "srv":
         return Disposition(
             action="skip_srv",
@@ -421,7 +522,10 @@ def decide(
         )
     if forward:
         assignee = _default_assignee(lane, assignee_email)
-        note = (note_body or "").strip() or "Internal forward. No public reply. Needed: read the original customer and answer them."
+        note = (note_body or "").strip() or (
+            "Internal forward. No public reply was sent.\n"
+            "Needed: read the original customer's message and answer them directly."
+        )
         return Disposition(
             action="handoff",
             agent=agent,
@@ -438,7 +542,7 @@ def decide(
     if is_staff_only_text(email) or public_is_unsafe(email):
         email = ""
     elif email:
-        email = single_signoff(email)
+        email = publictext.clean_public(email, greet)
     adviser = agent in {"quinn", "rafa"}
     specific = reason in _KEEP_ACK and email and not public_is_unsafe(public_body or "")
     handoff = (
@@ -460,7 +564,7 @@ def decide(
         )
 
     assignee = _default_assignee(lane, assignee_email)
-    public = email if specific else HOLDING_REPLY
+    public = email if specific else holding_reply(greet, customer_text)
     draft = without_staff_footer(note_body)
     if is_staff_only_text(draft):
         draft = ""
@@ -468,11 +572,20 @@ def decide(
         draft = without_staff_footer(public_body)
     if is_staff_only_text(draft):
         draft = ""
-    needed = reason or ("Rafa draft" if agent == "rafa" else "a person")
-    note = f"Needed: {needed}."
-    if draft and draft.strip() != (public or "").strip():
-        who = f"{agent.title()} draft (not sent to the customer):\n" if adviser else ""
-        note += f"\n\n{who}{draft}"
+    draft = publictext.strip_signoff(draft)
+    if draft and draft.strip() == publictext.strip_signoff(public or "").strip():
+        draft = ""
+    note = handoff_note(
+        lane=lane,
+        assignee_email=assignee,
+        reason=reason,
+        agent=agent,
+        customer_text=customer_text,
+        customer_name=customer_name,
+        customer_email=customer_email,
+        public_sent=bool(public),
+        draft=draft,
+    )
     tags = [TAG_ASSIGNED, "ai_generated", f"ai_{agent}", "ai_public_reply"]
     if adviser:
         tags.append("ai_draft_only")
@@ -490,15 +603,27 @@ def decide(
     )
 
 
-def human_request_disposition(lane: str, assignee_email: str) -> Disposition:
+def human_request_disposition(
+    lane: str,
+    assignee_email: str,
+    *,
+    greeting: str = "Hello,",
+    customer_text: str = "",
+    customer_name: str = "",
+    customer_email: str = "",
+) -> Disposition:
     return Disposition(
         action="handoff",
         agent="maya",
         reason="asked for a person",
-        public_body=HOLDING_REPLY,
-        internal_note=(
-            "Customer asked to speak to a person. "
-            f"Assigned to {assignee_email}. No answer was drafted."
+        public_body=f"{(greeting or 'Hello,').strip()}\n\n{HOLDING_BODY}",
+        internal_note=handoff_note(
+            lane=lane,
+            assignee_email=assignee_email,
+            reason="asked for a person",
+            customer_text=customer_text,
+            customer_name=customer_name,
+            customer_email=customer_email,
         ),
         status="open",
         assignee_email=assignee_email,
@@ -622,8 +747,7 @@ def demo_cases() -> list[tuple[str, dict]]:
                 matched="generated_needs_human",
                 public_body=(
                     "Hello Ana,\n\n"
-                    "I have asked the team to resend your confirmation. I cannot resend it myself.\n\n"
-                    "Warm regards,\nMaya - your AI assistant\nSuccess Resources Support"
+                    "I have asked the team to resend your confirmation. I cannot resend it myself."
                 ),
                 note_body="Staff only — Maya wrote this with claude-sonnet-5.",
                 assignee_email="meda.c@srglobal.com",

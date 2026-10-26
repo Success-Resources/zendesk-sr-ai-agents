@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agents import facts, guardrails, llm
+from agents import facts, guardrails, llm, publictext
 from agents.tools import TOOL_DOCS, run as run_tool
 from agents.tools import events, factsheets, hub, links, sheets
 
@@ -160,20 +160,9 @@ def _strip_em_dashes(text: str) -> str:
 
 
 def _apply_signature(email: str, agent: str) -> str:
-    """Close as the agent who wrote the reply, never as the customer or the Zendesk login."""
-    text = (email or "").strip()
-    if not text:
-        return text
-    text = re.sub(
-        r"\n+(?:warm|kind|best) regards,?\s*\n[\s\S]*\Z",
-        "",
-        text,
-        flags=re.I,
-    )
-    text = re.sub(r"\n+to your success,?\s*\n[\s\S]*\Z", "", text, flags=re.I).strip()
-    text = _strip_em_dashes(text).strip()
-    name = _signature_name(agent)
-    return f"{text}\n\nWarm regards,\n{name}\nSuccess Resources Support"
+    """No sign-off. Zendesk appends the one brand signature to every agent comment."""
+    text = publictext.strip_signoff(email)
+    return _strip_em_dashes(text).strip()
 
 
 _BOILERPLATE = re.compile(
@@ -307,25 +296,15 @@ def _quotes_page(email: str, page: str) -> bool:
 
 def _signed_first_name(description: str) -> str:
     """First name from the customer's own sign-off, not from a quoted newsletter."""
-    body = _customer_words(description)
-    match = re.search(
-        r"(?im)^(?:best|kind|warm|with)?\s*regards,?\s*\n+\s*([A-Z][a-z]+)\b",
-        body,
-    )
-    if match:
-        return match.group(1)
-    return ""
+    return publictext.signed_first_name(_customer_words(description))
 
 
 def _hello(name: str, description: str = "") -> str:
-    """Real first name only. Handles such as Roellamyecampos stay as Hello,."""
+    """Real first name only ("Hi Maria,"). Handles such as Roellamyecampos get "Hello,"."""
     signed = _signed_first_name(description)
     if signed:
-        return f"Hello {signed},"
-    parts = [part for part in re.split(r"\s+", (name or "").strip()) if part and "@" not in part]
-    if len(parts) >= 2 and all(re.fullmatch(r"[A-Z][a-z'’-]{1,20}", part) for part in parts[:2]):
-        return f"Hello {parts[0]},"
-    return "Hello,"
+        return f"Hi {signed},"
+    return publictext.greeting(name)
 
 
 def _city_of(text: str) -> str:
@@ -646,8 +625,10 @@ def run_agent(
         "Say you have asked the team and set needs_human true. "
         "A GDPR erasure request gets a short acknowledgement and needs_human true. "
         "Do not use em dashes. Use a comma, a period, or a hyphen. "
-        "Use the customer's signed first name, or Hello, if the Zendesk name is a single handle. "
-        "Do not add a sign-off. One sign-off is added for you. JSON only."
+        "Start with a greeting: Hi and the customer's real first name (from their sign-off or a two-word "
+        "Zendesk name), or Hello, if there is no reliable name. Never greet with an account, handle or company name. "
+        "Do not add any sign-off, closing or signature (no Warm regards, no Maya, no Success Resources): "
+        "the helpdesk appends the only signature. Never put internal reasoning in the email. JSON only."
     )
     messages = [
         {"role": "system", "content": system},
