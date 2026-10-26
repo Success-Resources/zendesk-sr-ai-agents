@@ -17,7 +17,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from agents import publictext  # noqa: E402
+from agents import publictext, routing  # noqa: E402
 
 # Zendesk trigger templates often drop the comma before a later field, and
 # ticket text is not JSON-escaped. Recover the ticket id from either shape.
@@ -344,7 +344,7 @@ def single_signoff(text: str) -> str:
 def is_access_issue(text: str) -> bool:
     text = text or ""
     # A refund or cancellation request is not an access problem, even if it says "unable to access".
-    if _MONEY_ASK.search(text):
+    if _MONEY_ASK.search(text) or routing.booking_change(text):
         return False
     return bool(_ACCESS_ISSUE.search(text))
 
@@ -366,6 +366,11 @@ def _needed_for(reason: str, agent: str, text: str) -> tuple[str, str]:
             "send the customer working access to the Masterclass/webinar replay.",
             "replay link status (is the link live?) and the customer's access for that product.",
         )
+    if "booking_change" in r or routing.booking_change(text):
+        return (
+            "correct the ticket type or booking (staff change; no transfer form was sent).",
+            "the order, the ticket types bought, and what the customer wants instead.",
+        )
     if is_access_issue(text):
         return (
             "check the customer's access and send a working link.",
@@ -377,6 +382,16 @@ def _needed_for(reason: str, agent: str, text: str) -> tuple[str, str]:
         return ("remove this address from the mailing lists.", "every list the address is on.")
     if "resend" in r or "confirm" in r:
         return ("check the booking and resend the confirmation or e-ticket.", "the purchase email and the booking.")
+    if agent == "rafa" or "refund" in r or "rafa" in r or routing.refund_ask(text):
+        return (
+            "review the refund or payment request and reply to the customer (Rafa's draft is below; Maya made no promise).",
+            "the payment record, the purchase date, and the T&C (14-day cooling-off from purchase).",
+        )
+    if agent == "quinn" or routing.ql_family(text):
+        return (
+            "review Quinn's draft below and reply to the customer (Quantum Leap family: QL, TTT, EWC, NWA).",
+            "the customer's QL package and the tickets or sessions in question.",
+        )
     if "transfer" in r:
         return ("review the transfer (VIP, refund or legal case).", "the booking and the transfer form submission.")
     if agent == "rafa" or "refund" in r or "rafa" in r or _MONEY_ASK.search(text or ""):
@@ -555,11 +570,18 @@ def decide(
         email = ""
     elif email:
         email = publictext.clean_public(email, greet)
-    adviser = agent in {"quinn", "rafa"}
+    # Routing rules (Akram, 26 Oct): refund -> Rafa, QL family -> Quinn, booking change -> a person.
+    # These are never solved by Maya, even when a draft looks grounded.
+    owner = routing.owner(customer_text) if customer_text else "maya"
+    adviser = agent in {"quinn", "rafa"} or owner in {"quinn", "rafa"}
+    booking = routing.booking_change(customer_text)
+    if adviser or booking:
+        email = ""
     specific = reason in _KEEP_ACK and email and not public_is_unsafe(public_body or "")
     handoff = (
         needs_human
-        or agent == "rafa"
+        or adviser
+        or booking
         or not email
         or (promises_handoff(email) and not specific)
     )
@@ -585,6 +607,8 @@ def decide(
     if is_staff_only_text(draft):
         draft = ""
     draft = publictext.strip_signoff(draft)
+    if booking and not adviser and "typeform.com" in draft:
+        draft = ""  # Maya's form reply is wrong for a booking change; do not hand it to staff as a draft.
     if draft and draft.strip() == publictext.strip_signoff(public or "").strip():
         draft = ""
     note = handoff_note(

@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agents import facts, guardrails, llm, publictext
+from agents import facts, guardrails, llm, publictext, routing
 from agents.tools import TOOL_DOCS, run as run_tool
 from agents.tools import events, factsheets, hub, links, sheets
 
@@ -384,6 +384,15 @@ def _correct_maya(
             "prize_handoff",
         )
 
+    if routing.booking_change(customer):
+        # A ticket-type correction, swap or upgrade is a staff change. The form is only for transfers and names.
+        return (
+            f"{hello}\n\n"
+            "Thank you for your message. I have asked the team to look at this, and they will follow up from here.",
+            True,
+            "booking_change",
+        )
+
     if _NAME.search(customer) or (_TRANSFER.search(customer) and not _CASH.search(customer)):
         lines = [
             f"{hello}",
@@ -669,7 +678,8 @@ def run_agent(
             email, needs, reason = _correct_maya(
                 email, needs, reason, subject, description, requester_name, live
             )
-        elif agent == "rafa":
+        elif agent in {"rafa", "quinn"}:
+            # Quinn and Rafa write a draft for the internal note. A person answers.
             needs = True
         if reason == "no_reply" or (_NO_REPLY.search(f"{subject}\n{description}") and not email.strip()):
             email = ""

@@ -256,9 +256,15 @@ def route_agent(tags: str, subject: str, description: str) -> str:
         routing_text = lambda text: text  # type: ignore
     customer = routing_text(f"{subject}\n{description}")
     tagset = set((tags or "").lower().replace(",", " ").split())
-    if _RAFA_Q.search(customer):
+    try:
+        from agents import routing
+    except ImportError:  # pragma: no cover
+        routing = None  # type: ignore
+    if _RAFA_Q.search(customer) or (routing and routing.refund_ask(customer)):
         return "rafa"
     if tagset & {"ql", "nwa", "gbi", "ttt", "ewc"} or _QUINN_Q.search(customer):
+        return "quinn"
+    if routing and routing.ql_family(customer):
         return "quinn"
     return "maya"
 

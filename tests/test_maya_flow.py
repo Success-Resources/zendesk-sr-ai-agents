@@ -105,24 +105,25 @@ class ParseAndClaimTests(unittest.TestCase):
 
 
 class DecideTests(unittest.TestCase):
-    def test_confident_quinn_answer_is_posted_by_maya(self) -> None:
+    def test_confident_quinn_answer_stays_internal(self) -> None:
+        # Akram, 26 Oct: Maya never answers QL-family tickets. Quinn drafts; a person sends.
         disposition = flow.decide(
             agent="quinn",
             lane="mmi",
             needs_human=False,
             matched="generated",
             public_body="Hello,\n\nThe next Quantum Leap dates are on the sheet.\n\n---\nStaff only — ignore",
-            note_body="staff",
+            note_body="",
             assignee_email="meda.c@srglobal.com",
             reason="ok",
         )
-        self.assertEqual(disposition.action, "solve")
-        self.assertEqual(disposition.status, "solved")
-        self.assertEqual(disposition.assignee_email, "")
-        self.assertIn("Quantum Leap dates", disposition.public_body)
-        self.assertNotIn("Staff only", disposition.public_body)
-        self.assertEqual(disposition.public_body.count("Warm regards"), 0)
-        self.assertIn(flow.TAG_ANSWERED, disposition.tags)
+        self.assertEqual(disposition.action, "handoff")
+        self.assertEqual(disposition.status, "open")
+        self.assertEqual(disposition.assignee_email, "meda.c@srglobal.com")
+        self.assertNotIn("Quantum Leap dates", disposition.public_body)
+        self.assertIn("Quantum Leap dates", disposition.internal_note)
+        self.assertIn("ai_draft_only", disposition.tags)
+        self.assertNotIn(flow.TAG_ANSWERED, disposition.tags)
 
     def test_rafa_draft_is_not_the_public_reply(self) -> None:
         disposition = flow.decide(
@@ -309,13 +310,13 @@ class ProcessTests(unittest.TestCase):
         self.assertIn("ai_rafa", outcome["tags"])
         self.assertIn("action: handoff to alina.last@srglobal.com", flow.format_outcome("100", outcome))
 
-    def test_quinn_confident_answer_is_solved_by_maya(self) -> None:
+    def test_quinn_confident_answer_is_handed_off(self) -> None:
         draft = _draft(agent="quinn", public_body="Hello,\n\nHere are the QL dates.")
         _outcome, posted, _seen = self._run(_ctx(), draft)
-        self.assertEqual(posted[0].action, "solve")
-        self.assertEqual(posted[0].status, "solved")
-        self.assertIn("QL dates", posted[0].public_body)
-        self.assertEqual(posted[0].assignee_email, "")
+        self.assertEqual(posted[0].action, "handoff")
+        self.assertEqual(posted[0].status, "open")
+        self.assertNotIn("QL dates", posted[0].public_body)
+        self.assertTrue(posted[0].assignee_email)
 
     def test_srv_is_skipped(self) -> None:
         def drafter(**_kwargs):
