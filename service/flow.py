@@ -59,6 +59,7 @@ _ACCESS_ISSUE = re.compile(
     r"link (?:is )?(?:broken|expired|invalid)|access denied|no access|login|log in|password|replay|recording)\b",
     re.I,
 )
+_MONEY_ASK = re.compile(r"\b(refund|reimburs|money back|chargeback|cancel(?:l?ation|l?ed|l?ing)?)\b", re.I)
 _QUOTE_MARK = re.compile(r"\n-{2,}\s*original message|\nOn .+wrote:|\nFrom:|\n>", re.I)
 _SIG_CUT = re.compile(r"(?m)^--\s*$|^VAT No\b|^Registered office\b", re.I)
 _SIGNOFF_BLOCK = re.compile(
@@ -69,6 +70,13 @@ _ACTION_CLAIM = re.compile(
     r"\b(?:has been|have been|we have|i have) "
     r"(?:unsubscribed|removed|deleted|resent|re-sent|cancelled|canceled|registered|updated|refunded)\b",
     re.I,
+)
+_META = re.compile(
+    r"^\s*(?:hello,?\s*)?customer\s*\(|\bper (?:hub|kb) policy\b|\bhub policy\b|\bNeeded:|\bMaya (?:to|should|must) reply\b|"
+    r"\bthe customer (?:wants|asks|asked|is asking|purchased|says|would like)\b|\bcustomer (?:wants|asks|purchased)\b|"
+    r"\bThis is a standard\b.*\brequest\b|\bcan be resolved directly\b|\bwithout further verification\b|"
+    r"\bstaff only\b|\binternal note\b|\bdraft(?:ed)? (?:reply|email)\b",
+    re.I | re.M | re.S,
 )
 _REASONING = re.compile(
     r"\b(not an MMI ticket|I will not send|I am not saying|\bpersona\b|knowledge hub)\b",
@@ -334,7 +342,11 @@ def single_signoff(text: str) -> str:
 
 
 def is_access_issue(text: str) -> bool:
-    return bool(_ACCESS_ISSUE.search(text or ""))
+    text = text or ""
+    # A refund or cancellation request is not an access problem, even if it says "unable to access".
+    if _MONEY_ASK.search(text):
+        return False
+    return bool(_ACCESS_ISSUE.search(text))
 
 
 def holding_reply(greet: str = "Hello,", customer_text: str = "") -> str:
@@ -367,7 +379,7 @@ def _needed_for(reason: str, agent: str, text: str) -> tuple[str, str]:
         return ("check the booking and resend the confirmation or e-ticket.", "the purchase email and the booking.")
     if "transfer" in r:
         return ("review the transfer (VIP, refund or legal case).", "the booking and the transfer form submission.")
-    if agent == "rafa" or "refund" in r or "rafa" in r:
+    if agent == "rafa" or "refund" in r or "rafa" in r or _MONEY_ASK.search(text or ""):
         return (
             "review the payment, refund or invoice request (staff decision; Maya made no promise).",
             "the payment record and the T&C (14-day cooling-off from purchase).",
@@ -425,7 +437,7 @@ def public_is_unsafe(text: str) -> bool:
     raw = text or ""
     if is_staff_only_text(raw):
         return True
-    if _ACTION_CLAIM.search(raw) or _REASONING.search(raw):
+    if _ACTION_CLAIM.search(raw) or _REASONING.search(raw) or _META.search(raw):
         return True
     if re.search(r"refund you today|we will refund|refund will (?:now )?be processed", raw, re.I):
         return True
