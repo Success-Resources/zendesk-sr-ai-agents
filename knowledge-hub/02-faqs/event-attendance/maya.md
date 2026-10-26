@@ -153,7 +153,7 @@ Hello,
 
 Thank you for your enquiry.
 
-For Millionaire Mind Intensive, no participants under 12. For Quantum Leap programmes, no participants under 18.
+For Millionaire Mind Intensive, participants must be 10 years or older. For Quantum Leap programmes, no participants under 18.
 
 Kind regards,
 
@@ -169,7 +169,7 @@ Hello,
 
 Thank you for your question.
 
-For Millionaire Mind Intensive, no participants under 12. A child under 12 cannot attend. For Quantum Leap programmes, no participants under 18.
+For Millionaire Mind Intensive, participants must be 10 years or older. A child under 10 cannot attend. For Quantum Leap programmes, no participants under 18.
 
 Best regards,
 
@@ -185,7 +185,7 @@ Hello,
 
 Thank you for your message.
 
-Yes, you are welcome to attend only on Saturday and Sunday if you are unable to join on Friday. Registration will still be available on Saturday morning.
+Yes, you are welcome to attend only on Saturday and Sunday if you are unable to join on Friday. Late registration closes at 12:00 on Saturday.
 
 However, please note that many important lessons, activities, and foundational concepts are covered on Friday. The program is designed to build progressively over the three days, so missing the first day may affect your overall experience and understanding of the later sessions.
 
@@ -221,7 +221,7 @@ Hello,
 
 Thank you for your question.
 
-If you miss a day, you're still welcome to attend the remaining days of the programme. On-site registration is officially open on Friday only, starting at 8:00 AM. A participant who arrives very early on Saturday morning can be an exception. Do not say registration stays open until 12:00 noon.
+If you miss a day, you're still welcome to attend the remaining days of the programme. Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday.
 
 However, MMI is designed as a progressive 3-day experience, with each session building on the previous one. Missing part of the programme may affect your understanding and experience of the later sessions.
 
@@ -429,9 +429,7 @@ Hello,
 
 Thank you for checking before the event.
 
-Translation availability can vary by programme, city, and date, so I’m confirming the language arrangements for your specific booking.
-
-Please send the purchase email address and event details if they are not already shown in the thread. We’ll reply with the confirmed translation options and any additional cost before you attend.
+Sessions are in English. Rome on 4-6 December 2026 has paid Italian interpretation for EUR 200 at https://millionairemind.live/rome-translation-cart. Paris on 4-6 December 2026 has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation, including Brussels.
 
 Kind regards,
 Success Resources Europe
@@ -478,7 +476,7 @@ Hello,
 
 Thank you for reaching out.
 
-On-site registration starts at 8:00 AM on Friday and is officially open on Friday only. A participant who arrives very early on Saturday morning can be an exception. Do not say registration stays open until 12:00 noon. Joining from Friday is better, because the programme builds through the weekend and the foundations are on day one.
+Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday. Joining from Friday is better, because the programme builds through the weekend and the foundations are on day one.
 
 The €100 cash is for an exercise on day one. Bring one 100 note, two 50 notes, or five 20 notes. It is not needed if you join from Saturday. The ticket price does not replace this cash.
 

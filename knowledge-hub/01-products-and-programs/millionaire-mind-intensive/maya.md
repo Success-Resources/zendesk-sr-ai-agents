@@ -103,7 +103,7 @@ Best regards,
 
 Hello,
 
-There is no translation or interpretation at any MMI event this year. All sessions are in English.
+Sessions are in English. Rome on 4-6 December 2026 has paid Italian interpretation for EUR 200 at https://millionairemind.live/rome-translation-cart. Paris on 4-6 December 2026 has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation, including Brussels.
 
 Kind regards,
 
@@ -119,7 +119,7 @@ Hello,
 
 Thank you for your question.
 
-There is no translation or interpretation at any MMI event this year. All sessions are in English. There is no extra cost, because it is not offered.
+Sessions are in English. Rome on 4-6 December 2026 has paid Italian interpretation for EUR 200 at https://millionairemind.live/rome-translation-cart. Paris on 4-6 December 2026 has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation, including Brussels. There is no extra cost except those two add-ons.
 
 Best regards,
 

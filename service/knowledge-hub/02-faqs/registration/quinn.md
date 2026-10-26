@@ -99,7 +99,7 @@ Hi [First Name],
 
 Thank you for reaching out.
 
-Eligible QL customers may redeem up to five MMI VIP tickets per year, subject to their package terms. Use https://www.millionairemind.live/europe/ql-redemption If you need help, send us your QL purchase email and preferred MMI city.
+Eligible QL customers may redeem up to five MMI VIP tickets per year, subject to their package terms. For a European MMI city only, use https://www.millionairemind.live/europe/ql-redemption. If the city is in Asia, do not send that link. The Asia redemption page is not published, so leave the ticket open for the team. If you need help, send us your QL purchase email and preferred MMI city.
 
 If you have any further questions, please let me know - I am happy to help.
 
@@ -124,5 +124,22 @@ If you have any further questions, please let me know - I am happy to help.
 
 All the best,
 Evelin
+
+---
+
+## How do I register or redeem my Quantum Leap or programme ticket
+**Agent:** Quinn  
+**Tag:** Verify Eligibility
+
+Hello,
+
+Thank you for your message.
+
+I’m checking the correct registration or redemption route for your ticket.
+
+Please confirm the programme, preferred city and date, purchase email address, and any ticket or redemption code you received. We’ll verify eligibility and send the correct next step without changing your existing booking.
+
+Kind regards,
+Success Resources Europe
 
 ---

@@ -2,9 +2,9 @@
 
 Step 5: on startup (and every 10 minutes) the service **downloads** `Success-Resources/zendesk-sr-ai-agents` from GitHub and reads `knowledge-hub/`. If GitHub is unreachable, it uses the bundled copy in `service/knowledge-hub`.
 
-Only **Maya** posts a public reply. A finished answer is status **solved** (`ai_answered`). When she needs a person, she posts a short holding reply, sets **open**, and assigns the lane (`ai_assigned_human`): MMI to `ZENDESK_MMI_ASSIGNEE_EMAIL` (default `meda.c@srglobal.com`), MMO (`mmo@`) to `ZENDESK_MMO_ASSIGNEE_EMAIL` (default `alina.last@srglobal.com`). Quinn and Rafa write an internal note only (`ai_draft_only`, `ai_quinn` / `ai_rafa`): no public comment and no status change. `srv@srglobal.com` is tagged `ai_skipped_srv` and left alone. `ZENDESK_PUBLIC_SOLVE_EMAILS` does not gate Maya's replies.
+Only **Maya** posts a public reply. A finished answer is status **solved** (`ai_answered`). When she needs a person, she posts one short holding reply, sets **open**, and assigns the lane (`ai_assigned_human`): MMI and every other lane to `ZENDESK_MMI_ASSIGNEE_EMAIL` (default `meda.c@srglobal.com`), MMO (`mmo@`) to `ZENDESK_MMO_ASSIGNEE_EMAIL` (default `alina.last@srglobal.com`). Quinn and Rafa do not post publicly. Their draft is an internal note on that same handoff, which still assigns Meda or Alina. Marketing, bounces, and system alerts are **solved with no reply and no assignee** (`auto_closed_noise`). `srv@srglobal.com` is tagged `ai_skipped_srv` and left alone.
 
-The service loads the ticket and comments from the API. The webhook only needs a ticket id, because trigger JSON often breaks on ticket text. A follow-up runs only when the latest public comment is the customer's, and only when no human agent has already replied. Maya's own public reply does not start another run.
+The service loads the ticket and comments from the API. The webhook only needs a ticket id, because trigger JSON often breaks on ticket text. A follow-up runs when the latest public comment is the customer's, including after Meda or Alina has already replied. Maya's own public reply does not start another run.
 
 Backfill (dry-run unless `--live`): `python scripts/backfill.py --help`.
 

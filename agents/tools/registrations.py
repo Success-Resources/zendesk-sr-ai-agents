@@ -171,6 +171,20 @@ def lookup_event_registration(query: str) -> str:
     if not events:
         return "sheet_not_configured: no MMI event sheets listed in agents/event-sheets.json."
     named = detect_events(query)
+    if not named:
+        asked = re.search(
+            r"\b(birmingham|brussels|rome|paris|amsterdam|krakow|kraków|manchester|"
+            r"taipei|singapore|kuala lumpur|bangkok|perth|lisbon|oslo)\b",
+            query or "",
+            re.I,
+        )
+        if asked:
+            city = asked.group(1)
+            return (
+                f"sheet_found=false email={email} lists=none detail=no Full List configured for {city}. "
+                "Do not say they are not registered. Set needs_human true. "
+                "Do not add an ActiveCampaign tag."
+            )
     search = named or events
     matches: list[dict] = []
     errors: list[str] = []
@@ -192,8 +206,9 @@ def lookup_event_registration(query: str) -> str:
                 f"tag={match['tag'] or 'NONE'} name={match['first']} {match['last']}".rstrip()
             )
         lines.append(
-            "Maya may tell them we found their registration. Always ask them to check spam/junk/"
-            "promotions. Add only the tag shown above in ActiveCampaign."
+            "Maya may tell them we found their registration on this list. "
+            "Ask them to check spam, junk, and promotions. "
+            "Do not add an ActiveCampaign tag and do not say a confirmation was re-sent."
         )
         return "\n".join(lines)
     hint = "; ".join(errors) if errors else "email not on Full List"

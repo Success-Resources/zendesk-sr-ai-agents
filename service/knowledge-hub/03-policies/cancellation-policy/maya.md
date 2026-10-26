@@ -17,11 +17,9 @@ Hello,
 
 Thank you for your message.
 
-If the event date no longer works for you, you may transfer your ticket to a different event date or city by completing the form below:
+We can review whether your ticket or programme can be moved to a future date or passed to another person.
 
-https://sr-event.typeform.com/to/ccysEJGM
-
-Once you've submitted the form, please reply to this email to let us know, and our team will assist you with your request.
+Please use this form for a transfer or a name change, one form for each ticket: https://sr-event.typeform.com/to/ccysEJGM Do not ask for an order number. If a refund is mentioned, leave the ticket open for the team. Nothing changes until the team confirms it in writing.
 
 Best regards,
 
@@ -37,11 +35,9 @@ Hello,
 
 Thank you for your message.
 
-Yes, you may request to transfer your ticket to a future event. Please complete the transfer request form below:
+We can review whether your ticket or programme can be moved to a future date or passed to another person.
 
-https://sr-event.typeform.com/to/ccysEJGM
-
-Once submitted, our team will review your request and confirm the available future event options.
+Please use this form for a transfer or a name change, one form for each ticket: https://sr-event.typeform.com/to/ccysEJGM Do not ask for an order number. If a refund is mentioned, leave the ticket open for the team. Nothing changes until the team confirms it in writing.
 
 Best regards,
 
@@ -57,7 +53,7 @@ Hello,
 
 Thank you for your message.
 
-In the unlikely event that an event is cancelled or postponed, all registered participants will be notified by email as soon as possible. You will be offered the available options, which may include transferring your ticket to a new event date or receiving a full refund.
+If an event is cancelled or postponed, registered participants are notified by email. Offer a transfer to another MMI date or location, or a transfer to another person. Do not say the ticket receives a full refund.
 
 Please make sure your registration email address is correct so you can receive any important updates.
 
@@ -75,11 +71,11 @@ Hello,
 
 Thank you for your message.
 
-We're sorry to hear that you won't be able to attend. If you'd like to cancel your registration, please complete the form below:
+Thank you for your email. I confirm that we have received your cancellation request.
 
-https://sr-event.typeform.com/to/ccysEJGM
+I understand you would like to cancel. Before a refund is discussed, we can move your MMI ticket to another MMI date or location, or transfer it to another person. Please tell us which you prefer.
 
-Please note that refund eligibility depends on the applicable cooling-off period from your purchase date. If you are outside the cooling-off period, you may still request to transfer your ticket to another person or a future event.
+Do not say the cancellation is complete. Do not mention a 14-day window, 45 working days, or a full refund.
 
 Best regards,
 

@@ -103,7 +103,7 @@ Best regards,
 
 Hello,
 
-There is no translation or interpretation at any MMI event this year. All sessions are in English.
+Sessions are in English. Rome on 4-6 December 2026 has paid Italian interpretation for EUR 200 at https://millionairemind.live/rome-translation-cart. Paris on 4-6 December 2026 has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation, including Brussels.
 
 Kind regards,
 
@@ -119,7 +119,7 @@ Hello,
 
 Thank you for your question.
 
-There is no translation or interpretation at any MMI event this year. All sessions are in English. There is no extra cost, because it is not offered.
+Sessions are in English. Rome on 4-6 December 2026 has paid Italian interpretation for EUR 200 at https://millionairemind.live/rome-translation-cart. Paris on 4-6 December 2026 has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation, including Brussels. There is no extra cost except those two add-ons.
 
 Best regards,
 
@@ -563,7 +563,7 @@ Hello,
 
 Thank you for your enquiry.
 
-The Millionaire Mind Intensive is designed as a personal development programme. A certificate of attendance is not included as part of the programme.
+The Millionaire Mind Intensive does not include a certificate of attendance. Say that. Do not escalate this to the Train the Trainer team, and do not use TTT certificate rules in an MMI reply. A ticket that is actually about TTT belongs to Quinn.
 
 If you have any further questions about the event, please feel free to let us know.
 

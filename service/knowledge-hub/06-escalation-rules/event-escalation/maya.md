@@ -24,3 +24,13 @@ Thank you for your patience and understanding.
 Kind regards,
 
 ---
+
+## Can I have a certificate of attendance
+**Agent:** Maya  
+**Tag:** Escalate
+
+Thank you for your message.
+
+The Millionaire Mind Intensive does not include a certificate of attendance. Do not escalate an MMI certificate question to the Train the Trainer team, and do not use TTT certificate rules here. A ticket that is actually about TTT belongs to Quinn.
+
+---

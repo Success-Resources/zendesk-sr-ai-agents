@@ -29,6 +29,23 @@ Best regards,
 
 ---
 
+## Why do I need to bring 100 euros, two times 50 euros, or five times 20 euros
+
+**Agent:** Maya  
+**Category:** Event Logistics  
+**Tag:** Universal
+
+Hello,
+
+Thank you for your message, and I’m sorry if this was not clear.
+
+The ticket you already paid does not include this cash. Please bring 100 euros, or 100 pounds at a UK event, for an exercise during the Millionaire Mind Intensive. You can bring one 100 note, two 50 notes, or five 20 notes. The total is 100.
+
+Kind regards,
+Success Resources Europe
+
+---
+
 ## 3.2 — What should I bring?
 
 **Agent:** Maya  
@@ -41,12 +58,14 @@ Thank you for your question.
 
 We recommend bringing the following items to the event:
 
--€100/£100 cash for a first-day activity
--Pens and a notepad
--Light snacks
--A water bottle
+- €100 or £100 in cash for an exercise during the Millionaire Mind Intensive. This is separate from the ticket you already paid. Bring one 100 note, two 50 notes, or five 20 notes. The total is 100.
+- Pens and a notepad
+- Light snacks
+- A water bottle
 
 We also recommend bringing a light sweater or jacket, as the room temperature may vary throughout the day.
+
+If they asked why they need the cash, answer that question. Do not reply with only the pens, snacks, bottle, or jacket.
 
 Best regards,
 
@@ -134,9 +153,7 @@ Hello,
 
 Thank you for your enquiry.
 
-To help participants gain the most from the programme, we recommend the event for individuals aged 15 years and above.
-
-Younger children may attend, provided their presence does not disrupt the learning environment for other participants.
+For Millionaire Mind Intensive, participants must be 10 years or older. For Quantum Leap programmes, no participants under 18.
 
 Kind regards,
 
@@ -152,9 +169,7 @@ Hello,
 
 Thank you for your question.
 
-Teenagers aged 15 and above are welcome to attend and often find the programme highly valuable.
-
-Younger children may also attend, provided they do not disrupt the sessions. We recommend considering whether the programme content is suitable for their age and ensuring they can participate respectfully throughout the event.
+For Millionaire Mind Intensive, participants must be 10 years or older. A child under 10 cannot attend. For Quantum Leap programmes, no participants under 18.
 
 Best regards,
 
@@ -170,7 +185,7 @@ Hello,
 
 Thank you for your message.
 
-Yes, you are welcome to attend only on Saturday and Sunday if you are unable to join on Friday. Registration will still be available on Saturday morning.
+Yes, you are welcome to attend only on Saturday and Sunday if you are unable to join on Friday. Late registration closes at 12:00 on Saturday.
 
 However, please note that many important lessons, activities, and foundational concepts are covered on Friday. The program is designed to build progressively over the three days, so missing the first day may affect your overall experience and understanding of the later sessions.
 
@@ -206,7 +221,7 @@ Hello,
 
 Thank you for your question.
 
-If you miss a day, you're still welcome to attend the remaining days of the programme. Please note that registration remains open until 12:00 PM on Saturday.
+If you miss a day, you're still welcome to attend the remaining days of the programme. Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday.
 
 However, MMI is designed as a progressive 3-day experience, with each session building on the previous one. Missing part of the programme may affect your understanding and experience of the later sessions.
 
@@ -243,7 +258,7 @@ Hello,
 
 Thank you for your question.
 
-No, recordings are not available. Millionaire Mind Intensive is designed as a live, interactive experience with exercises and activities that cannot be fully replicated through a recording.
+Millionaire Mind Intensive, Millionaire Mind Hybrid, and Quantum Leap do not include recordings or replays. Do not say one might be included. SRV programmes may offer recordings through a subscription; do not apply that rule to MMI, MMH, or QL.
 
 We encourage all participants to attend as many sessions as possible to receive the full value of the programme.
 
@@ -323,22 +338,6 @@ Best regards,
 
 ---
 
-## 6.3 — How does Priority Check-In work?
-
-**Agent:** Maya  
-**Category:** VIP-Specific Questions  
-**Tag:** Universal
-
-Hello,
-
-Thank you for your message.
-
-With Priority Check-In, VIP ticket holders have a dedicated check-in lane, allowing you to register and enter the event before Standard ticket holders. Please bring your photo ID and e-ticket, and follow the VIP Check-In signs at the registration area.
-
-Best regards,
-
----
-
 ## 3.20 — Can I have the fact sheet?
 
 **Agent:** Maya  
@@ -384,5 +383,115 @@ Thank you for your message.
 Please tell us which country you would like the WhatsApp group for and we will send the correct invite link.
 
 Kind regards,
+
+---
+
+## 6.3 — How does Priority Check-In work?
+
+**Agent:** Maya  
+**Category:** VIP-Specific Questions  
+**Tag:** Universal
+
+Hello,
+
+Thank you for your message.
+
+With Priority Check-In, VIP ticket holders have a dedicated check-in lane, allowing you to register and enter the event before Standard ticket holders. Please bring your photo ID and e-ticket, and follow the VIP Check-In signs at the registration area.
+
+Best regards,
+
+---
+
+## What is the date, timetable, or venue for my MMI booking
+**Agent:** Maya  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for your message.
+
+Do not hard-code a city, date, or venue. Take the date from LIVE UPCOMING EVENTS, the live city page, or the event sheet. Send a factsheet from lookup_links only for the city they named, and only state a venue when that live page states it.
+
+If those sources do not list the date or venue, say: I’m checking the confirmed date, timetable, and venue details for your booking so that we do not send you outdated information. Please confirm the registration email and programme if they are not already included. We’ll send the verified event details as soon as they are available.
+
+If they also ask how many tickets are on the booking, or about access for a guest with reduced mobility, say registrations is checking that booking and will confirm in writing. Ask for a different purchase email only if they say the original purchase may have used another address.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## Is there translation or a headset at my MMI
+**Agent:** Maya  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for checking before the event.
+
+Sessions are in English. Rome on 4-6 December 2026 has paid Italian interpretation for EUR 200 at https://millionairemind.live/rome-translation-cart. Paris on 4-6 December 2026 has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation, including Brussels.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## We have one QR code for several guests
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Please come to the registration desk with your guests, your purchase receipt, and the QR code you received. The team will check the booking and assist with entry.
+
+We are also checking whether that single QR code covers every ticket. Do not promise that extra QR codes can be issued on the spot.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## Is there a replay or recording of the session
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for your message.
+
+Millionaire Mind Intensive, Millionaire Mind Hybrid, and Quantum Leap do not include recordings or replays. Do not say one might be included. SRV programmes may offer recordings through a subscription; do not apply that rule to MMI, MMH, or QL.
+
+Do not guess a replay slot or another start time. Hybrid runs in the event’s local time. There is not a separate session in US time.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## Can I arrive on Saturday, and do I still need the cash
+**Agent:** Maya  
+**Tag:** Universal
+
+Hello,
+
+Thank you for reaching out.
+
+Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday. Joining from Friday is better, because the programme builds through the weekend and the foundations are on day one.
+
+The €100 cash is for an exercise on day one. Bring one 100 note, two 50 notes, or five 20 notes. It is not needed if you join from Saturday. The ticket price does not replace this cash.
+
+---
+
+## What time does each MMI day start and end
+**Agent:** Maya  
+**Tag:** City Lookup
+
+Hello,
+
+Thank you for reaching out.
+
+If the city factsheet states the hours, use those. Otherwise the in-person programme runs in local event time: Friday 9:00–21:00, Saturday 9:00–20:00, and Sunday 8:00–19:00. VIP speed networking starts Saturday at 8:00. Breaks can change, so arrive early.
+
+Do not say the timetable is unavailable when these hours or the factsheet already answer the question.
 
 ---

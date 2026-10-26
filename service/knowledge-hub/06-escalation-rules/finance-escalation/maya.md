@@ -49,9 +49,11 @@ Best regards,
 
 Hello,
 
-Thank you for your message. Refund requests may be considered if they are submitted within the applicable cooling-off period from the date of purchase: 14 working days for Europe events and 5 working days for Asia events. If your request is within this period, please send your registered and email.
+Thank you for your message. I understand, and I am sorry this has been difficult.
 
-If your purchase is outside the cooling-off period, refunds are no longer available. However, you may transfer your ticket to another person or to a future event by submitting a transfer request using the link: https://sr-event.typeform.com/to/ccysEJGM
+Before a refund is discussed, send the transfer form https://sr-event.typeform.com/to/ccysEJGM and leave the ticket open for the team. Do not ask for an order number. Do not approve the refund.
+
+Do not approve a refund. Do not mention a 14-day window, a processing time such as 45 days, or a full refund. Do not say money will be paid. If they still want a refund after those options, say the team will review the request and do not state an outcome.
 
 Best regards,
 
@@ -67,9 +69,7 @@ Hello,
 
 Thank you for your message.
 
-Once your refund request has been approved, the refund is typically processed within 7–14 working days, depending on your bank or payment provider.
-
-If you have not received your refund after this period, please reply to this email and we will be happy to follow up for you.
+Do not give a processing time. If a transfer to another MMI date, location, or person has not been offered yet, offer that first. If a refund is already under review, say it is with the team and do not quote a number of days.
 
 Best regards,
 
@@ -85,7 +85,7 @@ Hello,
 
 Thank you for your message.
 
-We're sorry to hear that your refund request was not approved. If your request was submitted outside the applicable cooling-off period, it may not be eligible for a refund under our policy.
+I am sorry this has been difficult. We can move your MMI ticket to another MMI date or location, or transfer it to another person. Do not say a refund was refused, and do not quote refund timings.
 
 If you believe your case requires further review, please reply to this email with your registration details, and we'll be happy to review your case and escalate it to the relevant team if appropriate.
 

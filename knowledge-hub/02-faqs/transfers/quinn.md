@@ -93,7 +93,7 @@ Thank you for letting us know.
 
 We can review whether your ticket or programme can be moved to a future date.
 
-Please confirm the purchase email address, ticket or order number, and the event you would prefer. The available options depend on the booking terms, package validity, payment status, and event availability.
+Please use this form for a transfer or a name change, one form for each ticket: https://sr-event.typeform.com/to/ccysEJGM. Do not ask for an order number. Confirm the purchase email and the event they prefer. Nothing changes until the team confirms it in writing.
 
 We will not change your current booking until the new arrangement is confirmed with you in writing.
 

@@ -2,7 +2,7 @@
 
 **Source:** `docs/terms-and-conditions.md` and CS operational rules.
 
-- Live events are personal use. **No recordings.** No filming or photography of the content as the default.
+- Live events are personal use. Do not tell the customer that a replay is never provided unless that is confirmed for the programme and ticket. Attendees may not film the sessions.
 - Upsells at events are optional. Attendees are not obliged to buy extra products.
 - Login / access is personal and non-transferable. Do not share accounts.
 - Company may change date/time with notice. Published T&Cs: no refund solely because the company changed the date; offer equivalent training where possible.

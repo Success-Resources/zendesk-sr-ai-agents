@@ -37,7 +37,6 @@ Thank you for your interest. Registration can be completed online through our we
 
 You can view upcoming events and register at https://millionairemind.live/
 
-If you have not yet chosen a country, reply with the country you would like to attend and we will point you to the official MMI website: https://millionairemind.live/
 
 Kind regards,
 
@@ -55,7 +54,7 @@ Thank you for your question.
 
 Online registration closes before the event begins.
 
-If you wish to register on-site, registration is available on Friday and Saturday until 12:00 PM (noon). After 12:00 PM on Saturday, no new registrations will be accepted.
+Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday.
 
 We recommend registering early to secure your preferred ticket type and any available promotional pricing.
 
@@ -73,7 +72,7 @@ Hello,
 
 Thank you for your question.
 
-Yes, you can register on Saturday. On-site registration is available until 12:00 PM (noon). After that time, no new participants will be admitted.
+Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday.
 
 We strongly recommend attending from Friday, as the programme is designed to build progressively over all three days, and many important lessons begin on Day 1.
 
@@ -91,7 +90,7 @@ Hello,
 
 Thank you for your question.
 
-On Friday, on-site registration is open from 7:45 AM to 8:45 AM, before the programme begins at 9:00 AM.
+Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday.
 
 For VIP participants, the Speed Networking Session begins at 8:00 AM on Saturday.
 
@@ -111,7 +110,7 @@ Hello,
 
 Thank you for your message.
 
-No problem! Please reply with the correct information, and we'll update your registration for you.
+No problem. Please reply with the correct information. The team will update the registration after they check it. I cannot change it myself.
 
 To help us process your request, please include:
 
@@ -176,5 +175,82 @@ No problem at all! The Pre-Training is designed to help you prepare for the even
 You can still attend and fully participate in all sessions and activities during the programme.
 
 Best regards,
+
+---
+
+## Can I use an unused VIP ticket or redemption code for another MMI
+**Agent:** Maya  
+**Tag:** Verify Eligibility
+
+Hello,
+
+Thank you for your message.
+
+I’m checking the correct registration or redemption route for your ticket.
+
+Please confirm the programme, preferred city and date, purchase email address, and any ticket or redemption code you received. We’ll verify eligibility and send the correct next step without changing your existing booking.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## A friend sent me an MMI invitation or redemption link
+**Agent:** Maya  
+**Tag:** Verify Eligibility
+
+Hello,
+
+Thank you for your message.
+
+I’d be happy to help you with the MMI invitation.
+
+Please send us the invitation or redemption link your friend received, together with your friend’s full name and the email connected to their booking. We’ll verify the invitation and send you the correct registration steps. Do not send a date or registration URL that has not been verified.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## My booking shows quantity 1 but it is for two people
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+If the thread already shows the booking is for two people, confirm that. A quantity shown as “1” can be a display issue and does not by itself reduce the booking to one ticket.
+
+Please send the second guest’s full name and email address. The MMI team will confirm how those details are added. Do not invent a self-serve process.
+
+Before confirming a guest registration, verify the number and type of tickets on the order. Ask for the purchase email and the guest’s full name and email if they are not already in the thread. Do not ask for an order number. Confirm the booking and the guest steps in writing after that check.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## How do I use the buy-one-get-one offer for two people
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for reaching out.
+
+Confirm the city and dates when they are already on the live event list. Do not guess the checkout quantity, whether a coupon code is required, or how the second person’s name is added.
+
+A colleague checks the current checkout and sends the confirmed steps. Ask them to wait to pay until that confirmation arrives if they are unsure.
+
+---
+
+## My email address has changed
+**Agent:** Maya  
+**Tag:** Universal
+
+Hello,
+
+Thank you for telling us. The team will update the email address after they verify the booking. I cannot change it myself.
+
+Do not ask which city they want unless they also asked an event question.
 
 ---

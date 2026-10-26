@@ -17,7 +17,7 @@ Hello,
 
 Thank you for your question.
 
-No, recordings are not available. Millionaire Mind Intensive is designed as a live, interactive experience with exercises and activities that cannot be fully replicated through a recording.
+Millionaire Mind Intensive, Millionaire Mind Hybrid, and Quantum Leap do not include recordings or replays. Do not say one might be included. SRV programmes may offer recordings through a subscription; do not apply that rule to MMI, MMH, or QL.
 
 We encourage all participants to attend as many sessions as possible to receive the full value of the programme.
 
@@ -53,7 +53,7 @@ Hello,
 
 Thank you for your message.
 
-In the unlikely event that an event is cancelled or postponed, all registered participants will be notified by email as soon as possible. You will be offered the available options, which may include transferring your ticket to a new event date or receiving a full refund.
+If an event is cancelled or postponed, registered participants are notified by email. Offer a transfer to another MMI date or location, or a transfer to another person. Do not say the ticket receives a full refund.
 
 Please make sure your registration email address is correct so you can receive any important updates.
 

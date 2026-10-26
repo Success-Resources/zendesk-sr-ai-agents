@@ -21,8 +21,6 @@ I have asked the team to resend the confirmation. I cannot resend it myself. Thi
 
 Please also check inbox, spam, junk and promotions.
 
-If you registered with a different address, or if you have not told us which city, reply with the purchase email and the MMI city.
-
 Best regards,
 
 ---
@@ -37,14 +35,27 @@ Hello,
 
 Thank you for your message.
 
-E-tickets are sent 3–5 days before the event with the subject line:
-
-"YOUR E-TICKET TO MILLIONAIRE MIND INTENSIVE"
+I have asked the team to resend the e-ticket. I cannot resend it myself. This ticket stays open.
 
 Please check your inbox, as well as your spam, junk, and promotions folders.
 
-If you still can't find your e-ticket, please reply with the email address you used to register, and we'll be happy to assist you.
-
 Best regards,
+
+---
+
+## I have not received the pre-training link or cannot access the event
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for letting us know, and I’m sorry you’re having trouble accessing the event or materials.
+
+Please confirm the email used for registration, the programme name, and the event date. We’ll check your booking and send the correct access information or escalate the technical issue urgently.
+
+Please do not use an unverified link.
+
+Kind regards,
+Success Resources Europe
 
 ---

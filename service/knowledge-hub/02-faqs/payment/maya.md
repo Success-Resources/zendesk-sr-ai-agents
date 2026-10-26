@@ -166,3 +166,20 @@ Please let us know which event you are interested in attending, and we'll be hap
 Kind regards,
 
 ---
+
+## I cannot afford the ticket before the event or I want the offer later
+**Agent:** Maya  
+**Tag:** Verify Eligibility
+
+Hello,
+
+Thank you for sharing your situation. I’m sorry the timing makes it difficult for you to join.
+
+Do not treat this as an existing purchased ticket, and do not offer a transfer or a refund, unless they have already bought.
+
+I’m checking with the team whether the current offer can be used for a later event. I don’t want to promise an exception before it is confirmed. We’ll come back to you as soon as we have a definite answer.
+
+Kind regards,
+Success Resources Europe
+
+---

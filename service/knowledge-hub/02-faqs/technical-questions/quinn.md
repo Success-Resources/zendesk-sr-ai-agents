@@ -82,3 +82,22 @@ All the best,
 Evelin
 
 ---
+
+## Is there a replay of the live programme
+**Agent:** Quinn  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for your message.
+
+Replay availability depends on the specific programme and ticket type, so I’m checking the access terms for your booking rather than guessing.
+
+Please confirm the programme, event date, and purchase email address if they are not already in the thread. We’ll let you know whether a recording is included and how long it will remain available.
+
+Do not list future dates unless they are on the QL sheet.
+
+Kind regards,
+Success Resources Europe
+
+---

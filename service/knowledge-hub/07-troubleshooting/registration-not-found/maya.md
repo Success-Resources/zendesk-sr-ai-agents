@@ -17,7 +17,7 @@ Hello,
 
 Thank you for your message.
 
-No problem! Please reply with the correct information, and we'll update your registration for you.
+No problem. Please reply with the correct information. The team will update the registration after they check it. I cannot change it myself.
 
 To help us process your request, please include:
 

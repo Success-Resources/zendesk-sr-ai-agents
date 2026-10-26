@@ -25,3 +25,15 @@ https://www.successresources.com
 Kind regards,
 
 ---
+
+## I am interested in another programme mentioned on stage
+**Agent:** Maya  
+**Tag:** Escalate
+
+Hello,
+
+Thank you for your message. We are glad the session was useful.
+
+Your interest has been passed to the team who will send the details. Do not leave this ticket without a reply, and do not invent prices or dates for that programme.
+
+---
