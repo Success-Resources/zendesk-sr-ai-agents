@@ -15,6 +15,13 @@ _ACTION_CLAIM = re.compile(
     r"(?:unsubscribed|removed|deleted|resent|re-sent|cancelled|canceled|registered|updated|refunded)\b",
     re.I,
 )
+_META = re.compile(
+    r"^\s*(?:hello,?\s*)?customer\s*\(|\bper (?:hub|kb) policy\b|\bhub policy\b|\bNeeded:|\bMaya (?:to|should|must) reply\b|"
+    r"\bthe customer (?:wants|asks|asked|is asking|purchased|says|would like)\b|\bcustomer (?:wants|asks|purchased)\b|"
+    r"\bThis is a standard\b.*\brequest\b|\bcan be resolved directly\b|\bwithout further verification\b|"
+    r"\bstaff only\b|\binternal note\b|\bdraft(?:ed)? (?:reply|email)\b",
+    re.I | re.M | re.S,
+)
 _REASONING = re.compile(
     r"\b(not an MMI ticket|I will not send|I am not saying|\bpersona\b|knowledge hub)\b",
     re.I,
@@ -73,7 +80,7 @@ def check(email: str, tools_used: list[str], agent: str, live: str = "") -> tupl
         )
     if _ACTION_CLAIM.search(text):
         return "", True, "action_claim_blocked"
-    if _REASONING.search(text):
+    if _REASONING.search(text) or _META.search(text):
         return "", True, "reasoning_blocked"
     without_exercise_cash = re.sub(r"(?:€|£)\s?100\b", "", text, flags=re.I)
     without_exercise_cash = re.sub(

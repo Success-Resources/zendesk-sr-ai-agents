@@ -66,6 +66,7 @@ def _first_name(raw: str) -> str:
 def signed_first_name(text: str) -> str:
     """First name from the customer's own sign-off above any quote."""
     body = _QUOTE.split(text or "", maxsplit=1)[0]
+    body = re.sub(r"[*_]+", "", body)  # markdown such as **_Marina Mursic_**
     found = ""
     for match in _SIGNED.finditer(body):
         found = match.group(1)

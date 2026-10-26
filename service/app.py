@@ -562,7 +562,7 @@ def solve_without_reply(ticket_id: str, extra_tags: list[str] | None = None) -> 
 def _matcher_draft(tags: str, subject: str, description: str, extra: list[str]) -> flow.Draft:
     agent, matched, note_body = draft_note(str(tags), str(subject), flow.routing_text(str(description)))
     public = "" if matched == "none" else note_body
-    needs = agent == "rafa" or matched == "none" or flow.promises_handoff(public)
+    needs = agent in {"rafa", "quinn"} or matched == "none" or flow.promises_handoff(public)
     reason = "Rafa drafts only. A person sends." if agent == "rafa" else "matcher"
     if matched == "none":
         reason = "no hub match"
@@ -607,7 +607,7 @@ def _build_draft(
                 extra_tags=extra,
                 note_body=note_body,
                 public_body=result.email.strip(),
-                needs_human=bool(result.needs_human) or result.agent == "rafa",
+                needs_human=bool(result.needs_human) or result.agent in {"rafa", "quinn"},
                 reason=result.reason,
             )
         except Exception:
