@@ -25,3 +25,20 @@ All the best,
 Evelin
 
 ---
+
+## I need the team to check my Quantum Leap, TTT, GBI, NWA, or EWC booking
+**Agent:** Quinn  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for your message.
+
+I want to make sure we give you accurate information. I’ve sent your enquiry to the relevant team for verification and will confirm the next step in writing.
+
+If your purchase details are not already included, please reply with the email used for the booking and your order or ticket number. Do not ask again for an email, receipt, or order number that is already in the thread.
+
+Kind regards,
+Success Resources Europe
+
+---

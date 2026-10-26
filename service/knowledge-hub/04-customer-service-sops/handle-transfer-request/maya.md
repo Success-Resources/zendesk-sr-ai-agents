@@ -17,12 +17,9 @@ Hello,
 
 Thank you for your question.
 
-Yes, you can transfer your ticket to another person.
+We can review whether your ticket or programme can be moved to a future date or passed to another person.
 
-Please complete the transfer request form here:
- https://sr-event.typeform.com/to/ccysEJGM
-
-Once you've submitted the form, please reply to this email to let us know, and we'll check the status of your request.
+Please use this form for a transfer or a name change, one form for each ticket: https://sr-event.typeform.com/to/ccysEJGM Do not ask for an order number. If a refund is mentioned, leave the ticket open for the team. Nothing changes until the team confirms it in writing.
 
 Best regards,
 
@@ -38,13 +35,9 @@ Hello,
 
 Thank you for your question.
 
-Yes, you can request to transfer your ticket to another event or city.
+We can review whether your ticket or programme can be moved to a future date or passed to another person.
 
-Please complete the transfer request form here:
-
- https://sr-event.typeform.com/to/ccysEJGM
-
-Once you've submitted the form, please let us know, and our team will process your request.
+Please use this form for a transfer or a name change, one form for each ticket: https://sr-event.typeform.com/to/ccysEJGM Do not ask for an order number. If a refund is mentioned, leave the ticket open for the team. Nothing changes until the team confirms it in writing.
 
 Best regards,
 
@@ -60,11 +53,9 @@ Hello,
 
 Thank you for your message.
 
-If the event date no longer works for you, you may transfer your ticket to a different event date or city by completing the form below:
+We can review whether your ticket or programme can be moved to a future date or passed to another person.
 
-https://sr-event.typeform.com/to/ccysEJGM
-
-Once you've submitted the form, please reply to this email to let us know, and our team will assist you with your request.
+Please use this form for a transfer or a name change, one form for each ticket: https://sr-event.typeform.com/to/ccysEJGM Do not ask for an order number. If a refund is mentioned, leave the ticket open for the team. Nothing changes until the team confirms it in writing.
 
 Best regards,
 
@@ -80,11 +71,9 @@ Hello,
 
 Thank you for your message.
 
-Yes, you may request to transfer your ticket to a future event. Please complete the transfer request form below:
+We can review whether your ticket or programme can be moved to a future date or passed to another person.
 
-https://sr-event.typeform.com/to/ccysEJGM
-
-Once submitted, our team will review your request and confirm the available future event options.
+Please use this form for a transfer or a name change, one form for each ticket: https://sr-event.typeform.com/to/ccysEJGM Do not ask for an order number. If a refund is mentioned, leave the ticket open for the team. Nothing changes until the team confirms it in writing.
 
 Best regards,
 

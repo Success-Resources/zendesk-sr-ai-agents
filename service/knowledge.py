@@ -235,21 +235,31 @@ def load_entries(agent: str, refresh: bool = True) -> list[Entry]:
     return entries
 
 
+_RAFA_Q = re.compile(
+    r"\b(refund|money back|invoice|vat invoice|charged twice|double charged|payment (?:failed|declined))\b",
+    re.I,
+)
+_QUINN_Q = re.compile(
+    r"\b(quantum leap|never work again|enlightened warrior|train the trainer|guerrilla business)\b",
+    re.I,
+)
+
+
 def route_agent(tags: str, subject: str, description: str) -> str:
-    blob = f"{tags} {subject} {description}".lower()
-    tagset = set((tags or "").lower().split())
-    if tagset & {"refund_request", "finance_related", "invoice_request", "vat_invoice"}:
+    """Rafa only for a real payment question in the customer's own words.
+
+    Trigger tags and quoted footers do not count. "vat" inside "private" does not count.
+    """
+    try:
+        from flow import routing_text
+    except ImportError:  # pragma: no cover
+        routing_text = lambda text: text  # type: ignore
+    customer = routing_text(f"{subject}\n{description}")
+    tagset = set((tags or "").lower().replace(",", " ").split())
+    if _RAFA_Q.search(customer):
         return "rafa"
-    if any(w in blob for w in ("refund", "invoice", "vat", "payment failed", "money back")):
-        return "rafa"
-    if tagset & {"ql", "nwa", "gbi", "ttt", "ewc"}:
+    if tagset & {"ql", "nwa", "gbi", "ttt", "ewc"} or _QUINN_Q.search(customer):
         return "quinn"
-    if tagset & {"mmi", "mmo_event"}:
-        return "maya"
-    if any(w in blob for w in ("quantum leap", " qleap", "never work again", "enlightened warrior", "train the trainer", "guerrilla")):
-        return "quinn"
-    if any(w in blob for w in ("millionaire mind", " mmi", "vip ticket", "harv eker")):
-        return "maya"
     return "maya"
 
 
@@ -279,26 +289,15 @@ def best_match(agent: str, subject: str, description: str) -> tuple[Entry | None
 
 
 def sendable_email(text: str) -> str:
-    """Same words as the hub email, with the send-ready sign-off."""
-    text = text.replace("\u2014", " - ").replace("\u2015", " - ")
+    """Hub email with one Maya sign-off and no second footer."""
+    text = (text or "").replace("\u2014", " - ").replace("\u2015", " - ")
     text = re.sub(r"[ \t]*--[ \t]*", " - ", text)
     text = re.sub(r" {2,}", " ", text)
-    email = re.sub(
-        r"(All the best|Kind regards|Warm regards|Best regards),?\s*\nEvelin\s*$",
-        "Warm regards,\nSuccess Resources Support",
-        text.strip(),
-        flags=re.IGNORECASE,
-    )
-    if "Success Resources Support" not in email:
-        email = re.sub(
-            r"(Kind regards|All the best|Best regards|Warm regards),?\s*$",
-            "Warm regards,\nSuccess Resources Support",
-            email,
-            flags=re.IGNORECASE,
-        )
-    if "Success Resources Support" not in email:
-        email = email.rstrip() + "\n\nWarm regards,\nSuccess Resources Support"
-    return email.strip()
+    try:
+        from flow import single_signoff
+    except ImportError:  # pragma: no cover
+        return text.strip()
+    return single_signoff(text)
 
 
 def draft_note(tags: str, subject: str, description: str) -> tuple[str, str, str]:

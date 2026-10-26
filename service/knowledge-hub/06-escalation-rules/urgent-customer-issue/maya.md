@@ -118,3 +118,36 @@ Were you able to find the information you needed? If you still require assistanc
 Kind regards,
 
 ---
+
+## Please unsubscribe me from your emails
+**Agent:** Maya  
+**Tag:** Universal
+
+Hello,
+
+If you are registered for an event, unsubscribing means you may no longer receive important updates about that event. You can unsubscribe yourself with the Unsubscribe link at the bottom of each email.
+
+If you still want this address removed from marketing mail, I have forwarded it for removal from the relevant marketing list. Please allow the system time to update. If you receive another promotional email after the update, reply with a copy so we can identify the remaining list.
+
+Say the ticket email has already been removed only when AC_UNSUB=ok or AC_UNSUB=already, and set needs_human false. Do not mention GDPR, data deletion, Ireland, or a data protection team, even if the customer asked for that in the same message.
+
+If AC_UNSUB=failed, skipped, or not_found, do not say it is done. Use the wording above and set needs_human true.
+
+Kind regards,
+Success Resources Europe
+
+---
+
+## This email is an automated notification, not a customer question
+**Agent:** Maya  
+**Tag:** Escalate
+
+No customer reply is needed. Close the ticket as solved.
+
+Classify this as an automated or misrouted notification and send it to the relevant internal owner only if action is required. This includes a webinar chat line that is not a question, a WebinarKit alert (check the live chat in that dashboard instead of emailing), a Google Apps Script failure summary, a “spreadsheet shared with you” notice, a Postiz or Instagram or Facebook “your post has been published” notice, and a Pinterest or other design-tool notification.
+
+A suspected phishing or password-reset email gets no reply. Do not click any links. Escalate it to the internal IT or security process.
+
+An unrelated missed call or robocall gets no reply.
+
+---

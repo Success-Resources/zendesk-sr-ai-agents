@@ -133,7 +133,8 @@ def _pick(query: str, rows: list[list[str]]) -> tuple[str, str, str] | None:
     upcoming = [row for row in chosen if row[0] >= now]
     pool = upcoming or chosen
     pool.sort(key=lambda row: row[0])
-    _when_code, code, url = pool[0]
+    # Soonest upcoming row. If every row is already past, use the latest, not the oldest.
+    _when_code, code, url = pool[0] if upcoming else pool[-1]
     return code, url, city
 
 

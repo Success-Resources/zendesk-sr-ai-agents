@@ -1,9 +1,10 @@
 """Zendesk webhook → Maya/Quinn/Rafa reply.
 
 Only Maya posts to the customer. A finished answer is a public reply and
-Solved. Her handoff is a holding reply, status Open, and an assignee.
-Quinn and Rafa stay internal-note only: no public comment and no status change.
-srv@ is skipped. MMI goes to Meda, MMO (mmo@) goes to Alina.
+Solved. Her handoff is one holding reply, status Open, and an assignee.
+Quinn and Rafa stay on the internal note, and that path still assigns.
+Noise is Solved with no reply and no assignee. srv@ is skipped.
+MMI goes to Meda, MMO (mmo@) goes to Alina.
 
 The trigger body is not trusted. The ticket id is recovered from broken JSON,
 then the ticket and comments are read from the API. A claim expires and is
@@ -31,6 +32,7 @@ from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 import flow
+import noise
 from knowledge import draft_note, ensure_hub, knowledge_status, route_agent
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -556,7 +558,7 @@ def solve_without_reply(ticket_id: str, extra_tags: list[str] | None = None) -> 
 
 
 def _matcher_draft(tags: str, subject: str, description: str, extra: list[str]) -> flow.Draft:
-    agent, matched, note_body = draft_note(str(tags), str(subject), str(description))
+    agent, matched, note_body = draft_note(str(tags), str(subject), flow.routing_text(str(description)))
     public = "" if matched == "none" else note_body
     needs = agent == "rafa" or matched == "none" or flow.promises_handoff(public)
     reason = "Rafa drafts only. A person sends." if agent == "rafa" else "matcher"
@@ -587,7 +589,7 @@ def _build_draft(
         try:
             from agents.loop import run_agent
 
-            agent = route_agent(str(tags), str(subject), str(description))
+            agent = route_agent(str(tags), str(subject), flow.routing_text(str(description)))
             result = run_agent(
                 agent,
                 str(subject),
@@ -839,13 +841,17 @@ def _apply_disposition(ticket_id: str, disposition: flow.Disposition) -> dict:
     if action == "handoff":
         return _apply_handoff(ticket_id, disposition)
     if action == "internal_draft":
-        # Private note only. No public comment, no status, no assignee.
+        # Legacy path. Still assign, and do not post the draft publicly.
+        assignee = disposition.assignee_email or maya_human_assignee(disposition.lane or "mmi")
+        assigned = assign_open_for_human(ticket_id, "", assignee, force=True) if assignee else False
         ok, detail = post_internal_note(
             ticket_id,
             disposition.internal_note or "No sendable draft. A person should reply.",
             disposition.tags,
         )
-        return _pack(disposition, posted=ok, assigned=False, reply="", detail=detail)
+        packed = _pack(disposition, posted=ok, assigned=assigned, reply="", detail=detail)
+        packed["assignee"] = assignee if assigned else ""
+        return packed
     return _pack(disposition, posted=False, assigned=False, detail="nothing to do")
 
 
@@ -892,8 +898,6 @@ def _webhook_skip(ctx: dict, bot_email: str) -> str | None:
     reason = flow.skip_reason_for_latest(comments, requester_id)
     if reason:
         return reason
-    if flow.other_agent_replied(comments, requester_id, ctx.get("users") or {}, bot_email):
-        return "a person already replied"
     return None
 
 
@@ -978,7 +982,49 @@ def _process_ticket(
 
     subject, description, tags, name, email = _message_from_context(ctx, hints)
     customer_text = _customer_text(ctx, hints, subject)
+    plain = flow.routing_text(customer_text or description)
     assignee = maya_human_assignee(lane)
+    noise_tag = noise.classify(
+        sender=email,
+        name=name,
+        subject=subject,
+        text=plain,
+        tags=tags,
+    )
+    if noise_tag:
+        disposition = flow.decide(
+            agent="maya",
+            lane=lane,
+            needs_human=False,
+            matched="no_reply",
+            public_body="",
+            note_body="",
+            assignee_email="",
+            reason=noise_tag,
+            noise_tag=noise_tag,
+        )
+        if live:
+            return poster(ticket_id, disposition)
+        return _plan(disposition)
+    if email.lower().endswith("@srglobal.com"):
+        disposition = flow.decide(
+            agent="maya",
+            lane=lane,
+            needs_human=True,
+            matched="forward",
+            public_body="",
+            note_body=(
+                f"Internal forward from {email}. No public reply.\n"
+                f"Subject: {subject}\n\n{plain[:2000]}\n\n"
+                "Needed: answer the original customer, not the staff sender."
+            ),
+            assignee_email=assignee,
+            reason="internal_forward",
+            forward=True,
+        )
+        if live:
+            return poster(ticket_id, disposition)
+        return _plan(disposition)
     if asks_for_human(subject, customer_text):
         disposition = flow.human_request_disposition(lane, assignee)
     else:

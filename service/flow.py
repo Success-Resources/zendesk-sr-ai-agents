@@ -37,12 +37,27 @@ _STAFF_NOTE = re.compile(
 )
 _STAFF_FOOTER = re.compile(r"\n---\nStaff only\b", re.I)
 
+MAYA_SIGNOFF = "Warm regards,\nMaya - your AI assistant\nSuccess Resources Support"
 HOLDING_REPLY = (
-    "Thank you for your message. I have passed this to a teammate, who will follow up from here.\n\n"
-    "Warm regards,\n"
-    "Maya - your AI assistant\n"
-    "Success Resources Support"
+    "Thank you for your message. I have asked the team to look at this, and they will follow up from here.\n\n"
+    + MAYA_SIGNOFF
 )
+_QUOTE_MARK = re.compile(r"\n-{2,}\s*original message|\nOn .+wrote:|\nFrom:|\n>", re.I)
+_SIG_CUT = re.compile(r"(?m)^--\s*$|^VAT No\b|^Registered office\b", re.I)
+_SIGNOFF_BLOCK = re.compile(
+    r"(?:\n+|^)(?:warm regards|kind regards|best regards|all the best|to your success),?\s*\n[\s\S]*\Z",
+    re.I,
+)
+_ACTION_CLAIM = re.compile(
+    r"\b(?:has been|have been|we have|i have) "
+    r"(?:unsubscribed|removed|deleted|resent|re-sent|cancelled|canceled|registered|updated|refunded)\b",
+    re.I,
+)
+_REASONING = re.compile(
+    r"\b(not an MMI ticket|I will not send|I am not saying|\bpersona\b|knowledge hub)\b",
+    re.I,
+)
+_KEEP_ACK = {"gdpr_handoff", "unsubscribe_handoff", "masterclass_handoff"}
 
 TAG_ANSWERED = "ai_answered"
 TAG_ASSIGNED = "ai_assigned_human"
@@ -276,6 +291,63 @@ def promises_handoff(text: str) -> bool:
     return bool(_HANDOFF_CLAIM.search(text or ""))
 
 
+def above_quote(text: str) -> str:
+    """Customer words only. Quoted history and signature blocks are dropped."""
+    body = _QUOTE_MARK.split(text or "", maxsplit=1)[0]
+    body = _SIG_CUT.split(body, maxsplit=1)[0]
+    return body.strip()
+
+
+def routing_text(description: str) -> str:
+    """Latest customer turn, for routing and the noise classifier."""
+    text = above_quote(description or "")
+    chunks = re.split(r"\n(?=(?:Customer|Staff):)", text)
+    customers = []
+    for chunk in chunks:
+        if chunk.startswith("Customer:"):
+            customers.append(chunk.split(":", 1)[-1].strip())
+    if customers:
+        return above_quote(customers[-1])
+    return text
+
+
+def single_signoff(text: str) -> str:
+    """One Maya sign-off. Extra regards blocks and brand footers are removed."""
+    body = (text or "").strip()
+    if not body:
+        return body
+    body = _SIGNOFF_BLOCK.sub("", body).strip()
+    kept = []
+    for line in body.splitlines():
+        if re.match(
+            r"(?i)^(to your success|customer service team|success resources uk limited|evelin)\b",
+            line.strip(),
+        ):
+            continue
+        kept.append(line)
+    body = "\n".join(kept).strip()
+    return f"{body}\n\n{MAYA_SIGNOFF}"
+
+
+def public_is_unsafe(text: str) -> bool:
+    raw = text or ""
+    if is_staff_only_text(raw):
+        return True
+    if _ACTION_CLAIM.search(raw) or _REASONING.search(raw):
+        return True
+    if re.search(r"refund you today|we will refund|refund will (?:now )?be processed", raw, re.I):
+        return True
+    return False
+
+
+def _default_assignee(lane: str, assignee_email: str) -> str:
+    if (assignee_email or "").strip():
+        return assignee_email.strip()
+    if (lane or "") == "mmo":
+        return "alina.last@srglobal.com"
+    return "meda.c@srglobal.com"
+
+
 def without_staff_footer(text: str) -> str:
     return _STAFF_FOOTER.split(text or "", maxsplit=1)[0].strip()
 
@@ -318,11 +390,13 @@ def decide(
     note_body: str,
     assignee_email: str,
     reason: str = "",
+    noise_tag: str = "",
+    forward: bool = False,
 ) -> Disposition:
-    """Maya solves or hands off. Quinn and Rafa stay on an internal note.
+    """Maya posts the public text. Noise is solved with no reply and no assignee.
 
-    Only Maya posts to the customer. Quinn and Rafa keep the pre-existing
-    draft: a private note, no public comment, no status change, no assignee.
+    Quinn and Rafa never write the public reply. Their draft stays on the
+    internal note, and that path still assigns Meda or Alina. srv@ is skipped.
     """
     agent = (agent or "maya").lower()
     if lane == "srv":
@@ -333,66 +407,75 @@ def decide(
             lane=lane,
             tags=["ai_skipped_srv"],
         )
-    if agent in {"quinn", "rafa"}:
-        note = (note_body or "").strip() or without_staff_footer(public_body)
-        return Disposition(
-            action="internal_draft",
-            agent=agent,
-            reason=reason or "draft only",
-            public_body="",
-            internal_note=note,
-            status=None,
-            assignee_email="",
-            lane=lane,
-            tags=["ai_draft_only", f"ai_{agent}", "ai_generated"],
-        )
-    if matched == "no_reply" or reason == "no_reply":
+    if noise_tag or matched == "no_reply" or reason in {"no_reply", "internal_alert"}:
+        sub = noise_tag or ("noise_system_alert" if reason == "internal_alert" else "noise_marketing")
         return Disposition(
             action="solve_silent",
             agent=agent,
-            reason=reason or "no_reply",
+            reason=reason or sub,
+            public_body="",
             status="solved",
-            assignee_email=assignee_email,
+            assignee_email="",
             lane=lane,
-            tags=[TAG_ANSWERED, "ai_generated", f"ai_{agent}", "ai_no_reply", "ai_solved"],
+            tags=["auto_closed_noise", sub, "ai_no_reply"],
         )
-    if reason == "internal_alert":
+    if forward:
+        assignee = _default_assignee(lane, assignee_email)
+        note = (note_body or "").strip() or "Internal forward. No public reply. Needed: read the original customer and answer them."
         return Disposition(
             action="handoff",
             agent=agent,
-            reason=reason,
+            reason=reason or "internal_forward",
             public_body="",
-            internal_note=note_body or "Internal alert. No customer reply. Leave this open.",
+            internal_note=note,
             status="open",
-            assignee_email=assignee_email,
+            assignee_email=assignee,
             lane=lane,
-            tags=[TAG_ASSIGNED, "ai_generated", f"ai_{agent}", "ai_internal_alert"],
+            tags=[TAG_ASSIGNED, "ai_generated", "ai_internal_forward"],
         )
 
     email = without_staff_footer(public_body)
-    if is_staff_only_text(email):
+    if is_staff_only_text(email) or public_is_unsafe(email):
         email = ""
-    rafa = agent == "rafa"
-    handoff = needs_human or rafa or not email or promises_handoff(email)
+    elif email:
+        email = single_signoff(email)
+    adviser = agent in {"quinn", "rafa"}
+    specific = reason in _KEEP_ACK and email and not public_is_unsafe(public_body or "")
+    handoff = (
+        needs_human
+        or agent == "rafa"
+        or not email
+        or (promises_handoff(email) and not specific)
+    )
     if not handoff:
         return Disposition(
             action="solve",
-            agent=agent,
+            agent="maya",
             reason=reason or "ok",
             public_body=email,
             status="solved",
-            assignee_email=assignee_email,
+            assignee_email="",
             lane=lane,
-            tags=[TAG_ANSWERED, "ai_generated", f"ai_{agent}", "ai_public_reply", "ai_solved"],
+            tags=[TAG_ANSWERED, "ai_generated", "ai_maya", "ai_public_reply", "ai_solved"],
         )
 
-    if rafa or not email:
-        public = HOLDING_REPLY
-        claims = True
-    else:
-        public = email
-        claims = promises_handoff(email)
-    note = note_body or f"Handoff ({reason or 'needs a person'})."
+    assignee = _default_assignee(lane, assignee_email)
+    public = email if specific else HOLDING_REPLY
+    draft = without_staff_footer(note_body)
+    if is_staff_only_text(draft):
+        draft = ""
+    if not draft:
+        draft = without_staff_footer(public_body)
+    if is_staff_only_text(draft):
+        draft = ""
+    needed = reason or ("Rafa draft" if agent == "rafa" else "a person")
+    note = f"Needed: {needed}."
+    if draft and draft.strip() != (public or "").strip():
+        who = f"{agent.title()} draft (not sent to the customer):\n" if adviser else ""
+        note += f"\n\n{who}{draft}"
+    tags = [TAG_ASSIGNED, "ai_generated", f"ai_{agent}", "ai_public_reply"]
+    if adviser:
+        tags.append("ai_draft_only")
     return Disposition(
         action="handoff",
         agent=agent,
@@ -400,10 +483,10 @@ def decide(
         public_body=public,
         internal_note=note,
         status="open",
-        assignee_email=assignee_email,
+        assignee_email=assignee,
         lane=lane,
-        tags=[TAG_ASSIGNED, "ai_generated", f"ai_{agent}", "ai_public_reply"],
-        claims_handoff=claims,
+        tags=tags,
+        claims_handoff=True,
     )
 
 
@@ -475,7 +558,7 @@ def format_outcome(ticket_id: str, outcome: dict) -> str:
     else:
         lines.append(f"action: {action}")
     note = (outcome.get("internal_note") or "").strip()
-    if action == "internal_draft" and note:
+    if note and action in {"handoff", "internal_draft"}:
         lines.append("internal note:")
         lines.append(note)
     reply = (outcome.get("reply") or "").strip()
@@ -506,8 +589,9 @@ def demo_cases() -> list[tuple[str, dict]]:
                 matched="generated",
                 public_body=(
                     "Hello Ana,\n\n"
-                    "There is no translation at MMI this year. All sessions are in English.\n\n"
-                    "Warm regards,\nMaya - your AI assistant\nSuccess Resources Support"
+                    "Sessions are in English. Rome has Italian interpretation for EUR 200, "
+                    "and Paris has French interpretation for EUR 99. "
+                    "No other MMI event in 2026 has interpretation, including Brussels."
                 ),
                 note_body="",
                 assignee_email="meda.c@srglobal.com",

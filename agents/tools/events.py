@@ -136,6 +136,9 @@ def _city_urls(pages: list[tuple[str, str, list[str]]]) -> dict[str, str]:
             clean = href.split("?")[0]
             if path in {"kl", "kualalumpur"}:
                 mapped["kuala lumpur"] = clean
+            elif path == "thailand":
+                mapped["bangkok"] = clean
+                mapped["thailand"] = clean
             else:
                 mapped[path.replace("-", " ")] = clean
     return mapped
@@ -148,6 +151,8 @@ def _match_url(city: str, urls: dict[str, str]) -> str:
     for name, url in urls.items():
         if name in key or key in name:
             return url
+    if key in {"bangkok", "thai"}:
+        return "https://www.millionairemind.live/thailand"
     slug = key.replace(" ", "-")
     return f"https://www.millionairemind.live/{slug}"
 
@@ -305,14 +310,7 @@ def _list_mmi(query: str, agent: str) -> str:
             "Do not invent. Set needs_human true."
         )
 
-    q = (query or "").lower()
-    agent = (agent or "maya").lower()
-    europe_only = agent == "maya" and not any(name in q for name in ("asia", "world", "all cities"))
-    if europe_only:
-        europe = [r for r in rows if r["city"].split(",")[0].strip().lower() in _EUROPE]
-        ordered = europe or rows
-    else:
-        ordered = rows
+    ordered = rows
 
     city = mentioned_city(query)
     if city:
@@ -335,10 +333,10 @@ def _list_mmi(query: str, agent: str) -> str:
             f"Customer named a city ({city}). Prefer that row. "
             "Venue/times only if the city page stated them."
         )
-    elif europe_only and agent == "maya":
+    else:
         lines.append(
-            "Maya/Europe: listed Europe dates first. "
-            "Point them to https://www.millionairemind.live/ for the full calendar."
+            "These dates include every city on the page, Europe and Asia. "
+            "If the customer named a city, answer that city only."
         )
     lines.append(
         "If a city page states a Standard or VIP price, quote that figure for that city only. "

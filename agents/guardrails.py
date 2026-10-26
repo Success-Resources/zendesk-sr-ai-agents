@@ -5,7 +5,18 @@ from __future__ import annotations
 import re
 
 _REFUND = re.compile(
-    r"refund (is |has been |was )?(approved|processed|paid|on (its|the) way)|we will refund|money will be (sent|returned)",
+    r"refund (is |has been |was )?(approved|processed|paid|on (its|the) way)|"
+    r"we will refund|money will be (sent|returned)|"
+    r"refund will (now )?be processed|cancelling your registration",
+    re.I,
+)
+_ACTION_CLAIM = re.compile(
+    r"\b(?:has been|have been|we have|i have) "
+    r"(?:unsubscribed|removed|deleted|resent|re-sent|cancelled|canceled|registered|updated|refunded)\b",
+    re.I,
+)
+_REASONING = re.compile(
+    r"\b(not an MMI ticket|I will not send|I am not saying|\bpersona\b|knowledge hub)\b",
     re.I,
 )
 _PRICE = re.compile(
@@ -56,10 +67,14 @@ def check(email: str, tools_used: list[str], agent: str, live: str = "") -> tupl
         return text, True, "Rafa drafts only. A person sends."
     if _REFUND.search(text):
         return (
-            "A person must handle this. The draft tried to approve or process a refund.",
+            "",
             True,
             "refund language blocked",
         )
+    if _ACTION_CLAIM.search(text):
+        return "", True, "action_claim_blocked"
+    if _REASONING.search(text):
+        return "", True, "reasoning_blocked"
     without_exercise_cash = re.sub(r"(?:€|£)\s?100\b", "", text, flags=re.I)
     without_exercise_cash = re.sub(
         r"\b100\s*(?:eur|euros|gbp|pounds)\b", "", without_exercise_cash, flags=re.I

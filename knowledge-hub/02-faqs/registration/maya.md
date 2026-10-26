@@ -37,7 +37,6 @@ Thank you for your interest. Registration can be completed online through our we
 
 You can view upcoming events and register at https://millionairemind.live/
 
-If you have not yet chosen a country, reply with the country you would like to attend and we will point you to the official MMI website: https://millionairemind.live/
 
 Kind regards,
 
@@ -55,7 +54,7 @@ Thank you for your question.
 
 Online registration closes before the event begins.
 
-On-site registration starts at 8:00 AM on Friday and is officially open on Friday only. A participant who arrives very early on Saturday morning can be an exception. Do not say registration stays open until 12:00 noon.
+Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday.
 
 We recommend registering early to secure your preferred ticket type and any available promotional pricing.
 
@@ -73,7 +72,7 @@ Hello,
 
 Thank you for your question.
 
-On-site registration is officially open on Friday only, starting at 8:00 AM. We can make an exception for a participant who arrives very early on Saturday morning. Do not say registration stays open until 12:00 noon.
+Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday.
 
 We strongly recommend attending from Friday, as the programme is designed to build progressively over all three days, and many important lessons begin on Day 1.
 
@@ -91,7 +90,7 @@ Hello,
 
 Thank you for your question.
 
-On-site registration starts at 8:00 AM on Friday and is officially open on Friday only. A participant who arrives very early on Saturday morning can be an exception. Do not use a 7:45 AM opening time, and do not say registration stays open until 12:00 noon.
+Registration opens at 8:00 and the session starts at 9:00. Late registration closes at 12:00 on Saturday.
 
 For VIP participants, the Speed Networking Session begins at 8:00 AM on Saturday.
 
@@ -111,7 +110,7 @@ Hello,
 
 Thank you for your message.
 
-No problem! Please reply with the correct information, and we'll update your registration for you.
+No problem. Please reply with the correct information. The team will update the registration after they check it. I cannot change it myself.
 
 To help us process your request, please include:
 
@@ -223,7 +222,7 @@ If the thread already shows the booking is for two people, confirm that. A quant
 
 Please send the second guest’s full name and email address. The MMI team will confirm how those details are added. Do not invent a self-serve process.
 
-Before confirming a guest registration, verify the number and type of tickets on the order. Ask for the purchase email, the order number, and the guest’s full name and email if they are not already in the thread. Confirm the booking and the guest steps in writing after that check.
+Before confirming a guest registration, verify the number and type of tickets on the order. Ask for the purchase email and the guest’s full name and email if they are not already in the thread. Do not ask for an order number. Confirm the booking and the guest steps in writing after that check.
 
 Kind regards,
 Success Resources Europe
@@ -250,7 +249,7 @@ A colleague checks the current checkout and sends the confirmed steps. Ask them 
 
 Hello,
 
-Thank you for telling us. We have noted the new email address from your message and the team will update it for future messages.
+Thank you for telling us. The team will update the email address after they verify the booking. I cannot change it myself.
 
 Do not ask which city they want unless they also asked an event question.
 

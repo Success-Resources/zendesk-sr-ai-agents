@@ -68,9 +68,7 @@ Hello,
 
 Thank you for checking before the event.
 
-Translation availability can vary by programme, city, and date, so I’m confirming the language arrangements for your specific booking.
-
-Please send the purchase email address and event details if they are not already shown in the thread. We’ll reply with the confirmed translation options and any additional cost before you attend.
+For MMI, sessions are in English. Rome has paid Italian interpretation for EUR 200 and Paris has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation. For other programmes, do not guess. Leave the ticket open if the sheet does not say.
 
 Kind regards,
 Success Resources Europe

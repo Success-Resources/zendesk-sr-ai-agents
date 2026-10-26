@@ -87,9 +87,7 @@ Best regards,
 
 Hello,
 
-Thank you for your message. The event will be conducted in English. For certain events, translation services may also be available; however, availability varies depending on the city and specific event.
-
-We recommend checking with our team or visiting the event website for the most up-to-date information regarding translation options for your chosen event. If you have any further questions, please feel free to reach out, and we will be happy to assist you.
+Sessions are in English. Rome on 4-6 December 2026 has paid Italian interpretation for EUR 200 at https://millionairemind.live/rome-translation-cart. Paris on 4-6 December 2026 has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation, including Brussels.
 
 Kind regards,
 
@@ -103,9 +101,7 @@ Hello,
 
 Thank you for your question.
 
-Translation availability depends on the specific MMI event and city.
-
-Could you please let us know which event or city you will be attending? We'll be happy to confirm whether translation services are available for your event.
+Sessions are in English. Rome on 4-6 December 2026 has paid Italian interpretation for EUR 200 at https://millionairemind.live/rome-translation-cart. Paris on 4-6 December 2026 has paid French interpretation for EUR 99. No other MMI event in 2026 has interpretation, including Brussels.
 
 Best regards,
 
@@ -543,7 +539,7 @@ Hello,
 
 Thank you for your message.
 
-Yes, you are welcome to attend only on Saturday and Sunday if you are unable to join on Friday. Registration will still be available on Saturday morning.
+Yes, you are welcome to attend only on Saturday and Sunday if you are unable to join on Friday. Late registration closes at 12:00 on Saturday.
 
 However, please note that many important lessons, activities, and foundational concepts are covered on Friday. The program is designed to build progressively over the three days, so missing the first day may affect your overall experience and understanding of the later sessions.
 
@@ -738,7 +734,7 @@ Hello,
 
 Thank you for your message.
 
-E-tickets are sent 3–5 days before the event with the subject line:
+E-tickets are sent 3 days before the event with the subject line:
 
 "YOUR E-TICKET TO MILLIONAIRE MIND INTENSIVE"
 
@@ -758,7 +754,7 @@ Hello,
 
 Thank you for your message.
 
-No problem! Please reply with the correct information, and we'll update your registration for you.
+No problem. Please reply with the correct information. The team will update the registration after they check it. I cannot change it myself.
 
 To help us process your request, please include:
 
@@ -881,9 +877,7 @@ Best regards,
 
 Hello,
 
-Thank you for your message. Refund requests may be considered if they are submitted within the applicable cooling-off period from the date of purchase: 14 working days for Europe events and 5 working days for Asia events. If your request is within this period, please send your registered and email.
-
-If your purchase is outside the cooling-off period, refunds are no longer available. However, you may transfer your ticket to another person or to a future event by submitting a transfer request using the link: https://sr-event.typeform.com/to/ccysEJGM
+Thank you for your message. Before a refund is discussed, please use the transfer form https://sr-event.typeform.com/to/ccysEJGM. Do not state a cooling-off window or a processing time in the customer email. Staff only: a 14-day cooling-off may apply, and an approved refund can take up to 45 working days.
 
 Best regards,
 
@@ -897,7 +891,7 @@ Hello,
 
 Thank you for your message.
 
-Once your refund request has been approved, the refund is typically processed within 7–14 working days, depending on your bank or payment provider.
+Do not quote a processing time to the customer. Staff only: an approved refund can take up to 45 working days.
 
 If you have not received your refund after this period, please reply to this email and we will be happy to follow up for you.
 
@@ -1623,7 +1617,7 @@ Hi [First Name],
 
 Thank you for reaching out.
 
-Eligible QL customers may redeem up to five MMI VIP tickets per year, subject to their package terms. Use https://www.millionairemind.live/europe/ql-redemption If you need help, send us your QL purchase email and preferred MMI city.
+Eligible QL customers may redeem up to five MMI VIP tickets per year, subject to their package terms. For a European MMI city only, use https://www.millionairemind.live/europe/ql-redemption. If the city is in Asia, do not send that link. The Asia redemption page is not published, so leave the ticket open for the team. If you need help, send us your QL purchase email and preferred MMI city.
 
 If you have any further questions, please let me know - I am happy to help.
 

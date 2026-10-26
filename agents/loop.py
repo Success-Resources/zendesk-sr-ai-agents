@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from agents import guardrails, llm
+from agents import facts, guardrails, llm
 from agents.tools import TOOL_DOCS, run as run_tool
 from agents.tools import events, factsheets, hub, links, sheets
 
@@ -37,7 +37,14 @@ _NO_REPLY = re.compile(
     r"\bpostiz\b|webinarkit|"
     r"someone just sent you a new question during the webinar|"
     r"to view this content, open the following url|"
-    r"\bout of office\b|\bautomatic reply\b|\bauto-?reply\b)",
+    r"\bout of office\b|\bautomatic reply\b|\bauto-?reply\b|"
+    r"summary of failures for google apps script|"
+    r"stripe transactions import failed|"
+    r"stripe dispute)",
+    re.I,
+)
+_ASIA_CITY = re.compile(
+    r"\b(taipei|singapore|kuala lumpur|\bkl\b|bangkok|perth|malaysia|taiwan|thailand|asia)\b",
     re.I,
 )
 _INTERNAL_ALERT = re.compile(
@@ -47,13 +54,6 @@ _INTERNAL_ALERT = re.compile(
     re.I,
 )
 _TYPEFORM = "https://sr-event.typeform.com/to/ccysEJGM"
-_VENUES = {
-    "oslo": "MMI Oslo takes place at Quality Hotel 33, Oslo, 9-11 October 2026.",
-    "birmingham": "MMI Birmingham takes place at Novotel Birmingham Centre, 6-8 November 2026.",
-}
-_DATES = {
-    "amsterdam": "Amsterdam is 29-31 January 2027.",
-}
 _MASTERCLASS = re.compile(r"\b(masterclass|webinar)\b", re.I)
 _GDPR = re.compile(r"\b(gdpr|article\s*17|right to erasure|delete my data|erase my (personal )?data|erasure)\b", re.I)
 _TRANSFER = re.compile(
@@ -77,8 +77,8 @@ _VISA = re.compile(r"\b(visa|embassy)\b", re.I)
 _PRIZE = re.compile(r"\b(prize|won|winner)\b", re.I)
 _GUEST = re.compile(r"\b(my guest|guest's details|guest details|guest is)\b", re.I)
 _CLAIM = re.compile(
-    r"(re-?sent|re-?triggered|just triggered|has just been|on its way|"
-    r"removed from our|already been removed|noted\b.{0,40}\bon file|we have noted)",
+    r"\b(?:re-?sent|re-?triggered|just triggered|has just been|on its way|"
+    r"removed from our|already been removed|we have noted)\b",
     re.I,
 )
 _FOLLOW_PROMISE = re.compile(
@@ -207,8 +207,11 @@ def asks_unsubscribe(subject: str, description: str) -> bool:
 
 
 def is_marketing_or_automated(subject: str, description: str) -> bool:
-    """Inbound campaign or system mail. Not a person asking to unsubscribe."""
-    blob = f"{subject}\n{description}"
+    """Inbound campaign or system mail. Not a person asking to unsubscribe.
+
+    Quoted history is ignored, so a customer reply that quotes WebinarKit is not noise.
+    """
+    blob = f"{subject}\n{_customer_words(description)}"
     if _NO_REPLY.search(blob):
         return True
     if asks_unsubscribe(subject, description):
@@ -302,11 +305,27 @@ def _quotes_page(email: str, page: str) -> bool:
     return sum(1 for word in words if word in hay) >= 2
 
 
-def _hello(name: str) -> str:
-    first = (name or "").strip().split()
-    if not first or "@" in first[0]:
-        return "Hello,"
-    return f"Hello {first[0]},"
+def _signed_first_name(description: str) -> str:
+    """First name from the customer's own sign-off, not from a quoted newsletter."""
+    body = _customer_words(description)
+    match = re.search(
+        r"(?im)^(?:best|kind|warm|with)?\s*regards,?\s*\n+\s*([A-Z][a-z]+)\b",
+        body,
+    )
+    if match:
+        return match.group(1)
+    return ""
+
+
+def _hello(name: str, description: str = "") -> str:
+    """Real first name only. Handles such as Roellamyecampos stay as Hello,."""
+    signed = _signed_first_name(description)
+    if signed:
+        return f"Hello {signed},"
+    parts = [part for part in re.split(r"\s+", (name or "").strip()) if part and "@" not in part]
+    if len(parts) >= 2 and all(re.fullmatch(r"[A-Z][a-z'’-]{1,20}", part) for part in parts[:2]):
+        return f"Hello {parts[0]},"
+    return "Hello,"
 
 
 def _city_of(text: str) -> str:
@@ -326,19 +345,17 @@ def _correct_maya(
     blob = f"{subject}\n{description}"
     words = _customer_words(description)
     customer = f"{subject}\n{words}"
-    hello = _hello(requester_name)
+    hello = _hello(requester_name, description)
     city = _city_of(blob)
 
     if re.search(r"no reply needed|this is an automated", email or "", re.I):
         return "", False, "no_reply"
 
-    if _MASTERCLASS.search(blob):
+    if _MASTERCLASS.search(customer) or re.search(r"\bSRLE\b|presenter competition", customer, re.I):
         return (
             f"{hello}\n\n"
-            "Thank you for writing about the Masterclass. I do not have a confirmed registration "
-            "link or replay to send, so I have asked the team to send the working link, or the next "
-            "session if there is no replay. I have also flagged the broken link for them. "
-            "This is not an MMI ticket, so I have not sent an MMI city page.",
+            "Thanks for letting us know about the Masterclass replay. "
+            "I have asked the team to check the link and send you working access.",
             True,
             "masterclass_handoff",
         )
@@ -346,9 +363,8 @@ def _correct_maya(
     if _GDPR.search(customer):
         return (
             f"{hello}\n\n"
-            "Thank you for your message. I have passed on both requests: to stop emails to this "
-            "address, and to delete your personal data. The team will confirm the erasure within "
-            "the legal deadline. I cannot remove the address or delete the data myself.",
+            "Thank you, we have received your request and passed it to the team responsible. "
+            "They will confirm by email.",
             True,
             "gdpr_handoff",
         )
@@ -360,7 +376,7 @@ def _correct_maya(
         if wrong_name:
             extra = " I am sorry the message used the wrong name."
         if repeated:
-            extra += " Because this has happened more than once, I have flagged it for the team."
+            extra += " I have asked the team to stop further messages to this address."
         return (
             f"{hello}\n\n"
             f"Thank you.{extra} I have passed your request to the team to remove this email address. "
@@ -401,15 +417,16 @@ def _correct_maya(
             f"Please use this form for the transfer or name change: {_TYPEFORM}"
         )
         lines.append("Send one form for each ticket. You do not need to send an order number.")
-        if city == "amsterdam" or "amsterdam" in blob.lower():
-            lines.append(_DATES["amsterdam"])
+        if city:
+            stated = facts.event_sentence(city)
+            if stated:
+                lines.append(stated)
         if re.search(r"\bvip\b", customer, re.I):
             lines.append("VIP transfers are reviewed by the team.")
         lines.append("Nothing is changed until the team confirms it in writing.")
         handoff = bool(
-            re.search(r"\b(refund|money back)\b", customer, re.I)
+            re.search(r"\b(refund|money back|gdpr|solicitor|lawyer)\b", customer, re.I)
             or re.search(r"\bvip\b", customer, re.I)
-            or _NAME.search(customer)
         )
         return "\n\n".join(lines), handoff or needs, "transfer_form" if not handoff else "transfer_handoff"
 
@@ -433,11 +450,26 @@ def _correct_maya(
             "resend_handoff",
         )
 
-    if _TRANSLATION.search(customer) and not _MASTERCLASS.search(blob):
+    if re.search(r"\b(redeem|redemption)\b", customer, re.I) and _ASIA_CITY.search(customer):
         return (
             f"{hello}\n\n"
-            "There is no translation or interpretation at any MMI event this year. "
-            "All sessions are in English.",
+            "Thank you for your message. I have asked the team to send the redemption steps for this event. "
+            "The Europe redemption page does not apply, and I do not have an Asia link to send.",
+            True,
+            "asia_ql_handoff",
+        )
+    if "europe/ql-redemption" in (email or "").lower() and _ASIA_CITY.search(customer):
+        return (
+            f"{hello}\n\n"
+            "Thank you for your message. I have asked the team to send the redemption steps for this event. "
+            "The Europe redemption page does not apply, and I do not have an Asia link to send.",
+            True,
+            "asia_ql_handoff",
+        )
+
+    if _TRANSLATION.search(customer) and not _MASTERCLASS.search(customer):
+        return (
+            f"{hello}\n\n{facts.interpretation_for(customer)}",
             False,
             "interpretation_fact",
         )
@@ -470,29 +502,23 @@ def _correct_maya(
                 False,
                 "factsheet_page",
             )
-        known = _VENUES.get(city)
-        if known:
-            return (
-                f"{hello}\n\n{known} I have not attached an older fact sheet.",
-                False,
-                "venue_fact",
-            )
+        stated = facts.event_sentence(city) if city else ""
+        if stated and "not confirmed" not in stated and "not published" not in stated and "Postponed" not in stated:
+            return f"{hello}\n\n{stated}", False, "venue_fact"
         where = city.title() if city else "that city"
+        extra = f" {stated}" if stated else ""
         return (
             f"{hello}\n\n"
-            f"I do not have a confirmed venue for {where} on the current list, so I have asked the team "
-            "to send it. I will not send a previous year's fact sheet, and I am not saying the venue is unpublished.",
+            f"I do not have a confirmed venue for {where}.{extra} I have asked the team to send it.",
             True,
             "venue_handoff",
         )
 
     if _FOOD.search(customer) and re.search(r"\b(food|meal|lunch|snack|served)\b", customer, re.I):
-        place = f"MMI {city.title()}" if city else "MMI"
         return (
             f"{hello}\n\n"
-            f"At {place}, light snacks are provided in the breaks. Meals are not included. "
-            "The in-person hours are Friday 9:00-21:00, Saturday 9:00-20:00, and Sunday 8:00-19:00 local. "
-            "VIP speed networking is Saturday at 8:00.",
+            "Lunch is not provided, and there is no hotel discount for participants. "
+            "Sessions finish around 20:00 to 21:00. There is no fixed end time or break schedule.",
             False,
             "food_fact",
         )
@@ -517,12 +543,16 @@ def _correct_maya(
         needs = True
         reason = reason if reason not in {"ok", ""} else "follow_up_left_open"
     if city and text.strip():
-        other = [name for name in ("kuala lumpur", "singapore") if name != city and name in text.lower()]
-        if other and city not in text.lower():
+        others = [
+            name
+            for name in facts.EVENTS
+            if name != city and re.search(rf"\b{re.escape(name)}\b", text, re.I)
+        ]
+        if others and not re.search(rf"\b{re.escape(city)}\b", text, re.I):
             text = (
                 f"{hello}\n\n"
                 f"This reply is about your {city.title()} event only. "
-                "I have asked the team to confirm the detail, and I have not used another city's page."
+                "I have asked the team to confirm the detail."
             )
             needs = True
             reason = "wrong_city_blocked"
@@ -605,8 +635,9 @@ def run_agent(
         "Say you have asked the team to resend it and set needs_human true. "
         "Transfers and name changes always include https://sr-event.typeform.com/to/ccysEJGM. "
         "Do not ask for an order number. One form per ticket. "
-        "There is no translation or interpretation at any MMI event this year. All sessions are in English. "
-        "A reply to a Masterclass or webinar is about that webinar. Do not send an MMI city page. "
+        f"{facts.prompt_block()} "
+        "A reply to a Masterclass or webinar is about that product. Do not send an MMI city page, "
+        "and do not explain that decision in the customer email. "
         "If FACTSHEET_PAGE is present, quote the venue, address, and dates from it and you may send its URL. "
         "If it is missing, say you do not have the fact sheet and set needs_human true. Do not say the venue is unpublished. "
         "The €100 cash is a Day 1 exercise, separate from the ticket, and not a fee. Answer that first. "
@@ -615,9 +646,8 @@ def run_agent(
         "Say you have asked the team and set needs_human true. "
         "A GDPR erasure request gets a short acknowledgement and needs_human true. "
         "Do not use em dashes. Use a comma, a period, or a hyphen. "
-        "Sign off with the agent name only, never the customer's name, never Akram, and never "
-        "'To your success' or 'Customer Service Team'. "
-        "Maya's sign-off name is 'Maya - your AI assistant'. JSON only."
+        "Use the customer's signed first name, or Hello, if the Zendesk name is a single handle. "
+        "Do not add a sign-off. One sign-off is added for you. JSON only."
     )
     messages = [
         {"role": "system", "content": system},

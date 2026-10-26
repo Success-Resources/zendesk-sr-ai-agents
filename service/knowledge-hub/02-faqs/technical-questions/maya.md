@@ -146,3 +146,19 @@ VIP digital materials are sent to your registration email closer to the event da
 Best regards,
 
 ---
+
+## Where is the hybrid workbook or Zoom link
+**Agent:** Maya  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for reaching out.
+
+The digital workbook is here: https://sr-event.com/mmh-workbook
+
+The Zoom link is sent three days before the event. The subject line is: [IMPORTANT] Your Access Link to Millionaire Mind Hybrid 2026 Event!
+
+Ask them to check the inbox, spam, junk, and promotions. If it is still missing, ask for the registration email only when it is not already in the thread.
+
+---

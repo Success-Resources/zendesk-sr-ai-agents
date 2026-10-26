@@ -25,3 +25,20 @@ All the best,
 Evelin
 
 ---
+
+## I cannot access Train the Trainer, Quantum Leap, or my programme materials
+**Agent:** Quinn  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for letting us know, and I’m sorry you’re having trouble accessing the event or materials.
+
+Please confirm the email used for registration, the programme name, and the event date. We’ll check your booking and send the correct access information, or escalate the technical issue urgently.
+
+Please do not use an unverified link.
+
+Kind regards,
+Success Resources Europe
+
+---

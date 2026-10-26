@@ -57,7 +57,7 @@ _FACTSHEETS = {
     "zurich": ("Zurich, Switzerland", "https://sr-event.com/zur-factsheet"),
     "ljubljana": ("Ljubljana, Slovenia", "https://sr-event.com/lju-factsheet"),
     "frankfurt": ("Frankfurt, Germany", "https://sr-event.com/fra-factsheet"),
-    "bucharest": ("Bucharest, Romania", "https://sr-event.com/mal-factsheet"),
+    "bucharest": ("Bucharest, Romania", "https://sr-event.com/buc-factsheet"),
     "hague": ("The Hague, Netherlands", "https://sr-event.com/tha-factsheet"),
     "london": ("London, United Kingdom", "https://sr-event.com/lon-factsheet"),
     "cologne": ("Cologne, Germany", "https://sr-event.com/col-factsheet"),
@@ -173,8 +173,8 @@ def lookup_links(query: str) -> str:
             )
         else:
             lines.append(
-                "REGISTRATION: city/country missing. Ask which country they want to attend, "
-                f"then tell them they can register on {REGISTER_URL}"
+                "REGISTRATION: city was not named. Send the official MMI website "
+                f"{REGISTER_URL} and do not ask which country."
             )
 
     if "factsheet" in wants:

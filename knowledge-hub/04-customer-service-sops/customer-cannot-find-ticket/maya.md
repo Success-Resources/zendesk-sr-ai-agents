@@ -35,7 +35,7 @@ Hello,
 
 Thank you for your message.
 
-E-tickets are sent 3–5 days before the event with the subject line:
+E-tickets are sent 3 days before the event with the subject line:
 
 "YOUR E-TICKET TO MILLIONAIRE MIND INTENSIVE"
 

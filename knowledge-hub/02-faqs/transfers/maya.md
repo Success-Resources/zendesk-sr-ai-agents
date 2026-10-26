@@ -87,7 +87,7 @@ Hello,
 
 Thank you for letting us know. We can review whether your ticket or programme can be moved to a future date.
 
-Please confirm the purchase email address, ticket or order number, and the event you would prefer. The available options depend on the booking terms, package validity, payment status, and event availability.
+Please confirm the purchase email address and the event you would prefer. Do not ask for an order number. The available options depend on the booking terms, package validity, payment status, and event availability.
 
 We will not change your current booking until the new arrangement is confirmed with you in writing. Do not send a transfer link unless that route is already confirmed for this booking.
 

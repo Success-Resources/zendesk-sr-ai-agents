@@ -82,3 +82,22 @@ All the best,
 Evelin
 
 ---
+
+## I need to postpone Train the Trainer or move my programme to another date
+**Agent:** Quinn  
+**Tag:** Verify Booking
+
+Hello,
+
+Thank you for letting us know.
+
+We can review whether your ticket or programme can be moved to a future date.
+
+Please use this form for a transfer or a name change, one form for each ticket: https://sr-event.typeform.com/to/ccysEJGM. Do not ask for an order number. Confirm the purchase email and the event they prefer. Nothing changes until the team confirms it in writing.
+
+We will not change your current booking until the new arrangement is confirmed with you in writing.
+
+Kind regards,
+Success Resources Europe
+
+---

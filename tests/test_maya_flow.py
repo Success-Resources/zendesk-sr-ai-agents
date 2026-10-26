@@ -105,7 +105,7 @@ class ParseAndClaimTests(unittest.TestCase):
 
 
 class DecideTests(unittest.TestCase):
-    def test_confident_quinn_stays_an_internal_note(self) -> None:
+    def test_confident_quinn_answer_is_posted_by_maya(self) -> None:
         disposition = flow.decide(
             agent="quinn",
             lane="mmi",
@@ -116,16 +116,13 @@ class DecideTests(unittest.TestCase):
             assignee_email="meda.c@srglobal.com",
             reason="ok",
         )
-        self.assertEqual(disposition.action, "internal_draft")
-        self.assertIsNone(disposition.status)
+        self.assertEqual(disposition.action, "solve")
+        self.assertEqual(disposition.status, "solved")
         self.assertEqual(disposition.assignee_email, "")
-        self.assertEqual(disposition.public_body, "")
-        self.assertEqual(disposition.internal_note, "staff")
-        self.assertIn("ai_draft_only", disposition.tags)
-        self.assertIn("ai_quinn", disposition.tags)
-        self.assertNotIn(flow.TAG_ANSWERED, disposition.tags)
-        text = flow.format_outcome("1", {"action": disposition.action, "agent": disposition.agent, "internal_note": disposition.internal_note, "tags": disposition.tags, "posted": False})
-        self.assertIn("action: internal draft (quinn)", text)
+        self.assertIn("Quantum Leap dates", disposition.public_body)
+        self.assertNotIn("Staff only", disposition.public_body)
+        self.assertEqual(disposition.public_body.count("Warm regards"), 1)
+        self.assertIn(flow.TAG_ANSWERED, disposition.tags)
 
     def test_rafa_draft_is_not_the_public_reply(self) -> None:
         disposition = flow.decide(
@@ -138,17 +135,28 @@ class DecideTests(unittest.TestCase):
             assignee_email="alina.last@srglobal.com",
             reason="Rafa drafts only. A person sends.",
         )
-        self.assertEqual(disposition.action, "internal_draft")
-        self.assertIsNone(disposition.status)
-        self.assertEqual(disposition.assignee_email, "")
-        self.assertEqual(disposition.public_body, "")
+        self.assertEqual(disposition.action, "handoff")
+        self.assertEqual(disposition.status, "open")
+        self.assertEqual(disposition.assignee_email, "alina.last@srglobal.com")
         self.assertIn("FULL DRAFT", disposition.internal_note)
         self.assertNotIn("refund you today", disposition.public_body)
+        self.assertIn("asked the team", disposition.public_body)
         self.assertIn("ai_draft_only", disposition.tags)
         self.assertIn("ai_rafa", disposition.tags)
-        self.assertNotIn(flow.TAG_ASSIGNED, disposition.tags)
-        text = flow.format_outcome("2", {"action": disposition.action, "agent": disposition.agent, "internal_note": disposition.internal_note, "posted": False})
-        self.assertIn("action: internal draft (rafa)", text)
+        self.assertIn(flow.TAG_ASSIGNED, disposition.tags)
+        text = flow.format_outcome(
+            "2",
+            {
+                "action": disposition.action,
+                "agent": disposition.agent,
+                "assignee": disposition.assignee_email,
+                "reply": disposition.public_body,
+                "internal_note": disposition.internal_note,
+                "posted": False,
+            },
+        )
+        self.assertIn("action: handoff to alina.last@srglobal.com", text)
+        self.assertNotIn("refund you today", text.split("internal note:")[0])
 
     def test_handoff_promise_is_not_solved(self) -> None:
         disposition = flow.decide(
@@ -178,7 +186,7 @@ class DecideTests(unittest.TestCase):
         )
         self.assertEqual(disposition.action, "handoff")
         self.assertNotIn("approve", disposition.public_body.lower())
-        self.assertIn("teammate", disposition.public_body)
+        self.assertIn("asked the team", disposition.public_body)
 
     def test_unassigned_text_drops_the_handoff_claim(self) -> None:
         text = "The form is here: https://sr-event.typeform.com/to/ccysEJGM. I have passed this to the team."
@@ -211,7 +219,8 @@ class DecideTests(unittest.TestCase):
         )
         self.assertEqual(silent.action, "solve_silent")
         self.assertEqual(silent.public_body, "")
-        self.assertIn(flow.TAG_ANSWERED, silent.tags)
+        self.assertEqual(silent.assignee_email, "")
+        self.assertIn("auto_closed_noise", silent.tags)
         alert = flow.decide(
             agent="maya",
             lane="mmi",
@@ -222,8 +231,10 @@ class DecideTests(unittest.TestCase):
             assignee_email="meda.c@srglobal.com",
             reason="internal_alert",
         )
-        self.assertEqual(alert.action, "handoff")
+        self.assertEqual(alert.action, "solve_silent")
         self.assertEqual(alert.public_body, "")
+        self.assertEqual(alert.assignee_email, "")
+        self.assertIn("noise_system_alert", alert.tags)
 
 
 class ProcessTests(unittest.TestCase):
@@ -290,23 +301,21 @@ class ProcessTests(unittest.TestCase):
         )
         outcome, posted, _seen = self._run(ctx, draft, live=False)
         self.assertEqual(posted, [])
-        self.assertEqual(outcome["action"], "internal_draft")
-        self.assertEqual(outcome["reply"], "")
-        self.assertEqual(outcome["assignee"], "")
+        self.assertEqual(outcome["action"], "handoff")
+        self.assertNotIn("refund you today", outcome["reply"])
+        self.assertEqual(outcome["assignee"], "alina.last@srglobal.com")
         self.assertIn("FULL DRAFT", outcome["internal_note"])
         self.assertIn("ai_draft_only", outcome["tags"])
         self.assertIn("ai_rafa", outcome["tags"])
-        self.assertIn("action: internal draft (rafa)", flow.format_outcome("100", outcome))
+        self.assertIn("action: handoff to alina.last@srglobal.com", flow.format_outcome("100", outcome))
 
-    def test_quinn_live_note_does_not_change_status(self) -> None:
+    def test_quinn_confident_answer_is_solved_by_maya(self) -> None:
         draft = _draft(agent="quinn", public_body="Hello,\n\nHere are the QL dates.")
         _outcome, posted, _seen = self._run(_ctx(), draft)
-        self.assertEqual(posted[0].action, "internal_draft")
-        self.assertIsNone(posted[0].status)
-        self.assertEqual(posted[0].public_body, "")
+        self.assertEqual(posted[0].action, "solve")
+        self.assertEqual(posted[0].status, "solved")
+        self.assertIn("QL dates", posted[0].public_body)
         self.assertEqual(posted[0].assignee_email, "")
-        self.assertIn("ai_draft_only", posted[0].tags)
-        self.assertIn("ai_quinn", posted[0].tags)
 
     def test_srv_is_skipped(self) -> None:
         def drafter(**_kwargs):
@@ -371,12 +380,10 @@ class ProcessTests(unittest.TestCase):
             users={"77": {"email": "meda.c@srglobal.com"}},
         )
 
-        def drafter(**_kwargs):
-            raise AssertionError("a human already replied")
-
-        outcome, posted, _seen = self._run(ctx, drafter)
-        self.assertEqual(posted, [])
-        self.assertIn("person already replied", outcome["reason"])
+        outcome, posted, seen = self._run(ctx, _draft())
+        self.assertEqual(outcome["action"], "solve")
+        self.assertEqual(posted[0].action, "solve")
+        self.assertIn("one more thing", seen["description"])
 
     def test_asking_for_a_person_assigns_without_a_draft(self) -> None:
         ctx = _ctx(comments=[_comment("1", "10", "I want to speak to a human being.")])
@@ -388,7 +395,7 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(posted[0].action, "handoff")
         self.assertEqual(posted[0].assignee_email, "meda.c@srglobal.com")
         self.assertTrue(posted[0].claims_handoff)
-        self.assertIn("teammate", posted[0].public_body)
+        self.assertIn("asked the team", posted[0].public_body)
 
     def test_backfill_skips_solved_and_existing_public_reply(self) -> None:
         solved, posted, _seen = self._run(_ctx(status="solved"), _draft(), backfill=True, live=False)
@@ -579,17 +586,16 @@ class BackfillScriptTests(unittest.TestCase):
         joined = "\n\n".join(text)
         self.assertIn("ticket 550001", joined)
         self.assertIn("action: solve", joined)
-        self.assertIn("All sessions are in English", joined)
+        self.assertIn("Rome has Italian interpretation", joined)
         self.assertIn("posted: no", joined)
         self.assertIn("ticket 550002", joined)
-        self.assertIn("action: internal draft (rafa)", joined)
+        self.assertIn("action: handoff to alina.last@srglobal.com", joined)
         self.assertIn("ai_draft_only", joined)
         self.assertIn("ai_rafa", joined)
-        self.assertNotIn("refund you today", joined)
-        self.assertNotIn("passed this to a teammate", joined.split("ticket 550003")[0])
+        self.assertNotIn("refund you today", joined.split("internal note:")[0])
         self.assertIn("ticket 550003", joined)
         self.assertIn("action: handoff to meda.c@srglobal.com", joined)
-        self.assertIn("resend your confirmation", joined)
+        self.assertIn("asked the team", joined)
         self.assertIn("ai_answered", joined)
         self.assertIn("ai_assigned_human", joined)
 

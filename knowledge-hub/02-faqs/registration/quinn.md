@@ -99,7 +99,7 @@ Hi [First Name],
 
 Thank you for reaching out.
 
-Eligible QL customers may redeem up to five MMI VIP tickets per year, subject to their package terms. Use https://www.millionairemind.live/europe/ql-redemption If you need help, send us your QL purchase email and preferred MMI city.
+Eligible QL customers may redeem up to five MMI VIP tickets per year, subject to their package terms. For a European MMI city only, use https://www.millionairemind.live/europe/ql-redemption. If the city is in Asia, do not send that link. The Asia redemption page is not published, so leave the ticket open for the team. If you need help, send us your QL purchase email and preferred MMI city.
 
 If you have any further questions, please let me know - I am happy to help.
 
