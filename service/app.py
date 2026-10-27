@@ -38,7 +38,7 @@ from knowledge import draft_note, ensure_hub, hub_root, knowledge_status, route_
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
-from agents import forward, notewords, publictext, routing  # noqa: E402
+from agents import forward, i18n, notewords, publictext, routing  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 load_dotenv(_ROOT / ".env")
@@ -772,6 +772,17 @@ def _message_from_context(ctx: dict, hints: dict) -> tuple[str, str, str, str, s
     return subject, description, tags, name, email
 
 
+def _localize(disposition, customer_text: str):
+    """v11: fixed holding sentences in the customer's language (nl/de/fr/es/it/pt), English otherwise."""
+    if not disposition.public_body:
+        return disposition
+    body, lang = i18n.localize_holding(disposition.public_body, customer_text or "")
+    if lang != "en":
+        disposition.public_body = body
+        disposition.tags = [*disposition.tags, f"ai_lang_{lang}"]
+    return disposition
+
+
 def _customer_text(ctx: dict, hints: dict, subject: str) -> str:
     comments = ctx.get("comments") or []
     latest = flow.latest_customer_text(comments, str(ctx.get("requester_id") or ""))
@@ -1235,6 +1246,10 @@ def _process_ticket(
             )
         elif latest and asks_for_human(subject, latest.body):
             disposition = flow.human_request_disposition(lane, assignee, **person)
+            if disposition.public_body and _long_wait_apology(hints):
+                disposition.public_body = publictext.with_long_wait_apology(disposition.public_body)
+                disposition.tags = [*disposition.tags, "ai_long_wait_apology"]
+            disposition = _localize(disposition, customer_text)
             log.info(
                 "answer ticket_id=%s lane=%s action=%s agent=%s live=%s",
                 ticket_id,
@@ -1264,6 +1279,7 @@ def _process_ticket(
     if disposition.public_body and _long_wait_apology(hints):
         disposition.public_body = publictext.with_long_wait_apology(disposition.public_body)
         disposition.tags = [*disposition.tags, "ai_long_wait_apology"]
+    disposition = _localize(disposition, customer_text)
     log.info(
         "answer ticket_id=%s lane=%s action=%s agent=%s live=%s reason=%s",
         ticket_id,
