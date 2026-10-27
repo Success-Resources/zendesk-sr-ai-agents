@@ -139,11 +139,8 @@ class ForwardTests(unittest.TestCase):
         self.assertEqual(outcome["action"], "handoff")
         self.assertEqual(outcome["reply"], "")
         self.assertEqual(outcome["assignee"], "meda.c@srglobal.com")
-        note = outcome["internal_note"]
-        self.assertIn("mail@yusufipek.me", note)
-        self.assertIn("4.", note)
-        self.assertIn("Forwarded original", note)
-        self.assertIn("Turkish interpretation", note)
+        # v14 (Akram, 27 Oct): Maya assigns forwards to Meda and leaves no internal note.
+        self.assertEqual(outcome["internal_note"], "")
 
 
 import test_maya_flow as _tmf  # noqa: E402

@@ -898,7 +898,7 @@ def _apply_handoff(ticket_id: str, disposition: flow.Disposition) -> dict:
     assignee = disposition.assignee_email
     public = (disposition.public_body or "").strip()
     tags = list(disposition.tags)
-    note = disposition.internal_note or ""
+    note = flow.without_maya_note(disposition).internal_note or ""
 
     def _note(extra: list[str] | None = None) -> None:
         if note:
@@ -973,6 +973,7 @@ def _apply_handoff(ticket_id: str, disposition: flow.Disposition) -> dict:
 
 
 def _apply_disposition(ticket_id: str, disposition: flow.Disposition) -> dict:
+    disposition = flow.without_maya_note(disposition)
     action = disposition.action
     if action == "skip_srv":
         skip_srv_ticket(ticket_id)
@@ -1014,11 +1015,15 @@ def _apply_disposition(ticket_id: str, disposition: flow.Disposition) -> dict:
         # Legacy path. Still assign, and do not post the draft publicly.
         assignee = disposition.assignee_email or maya_human_assignee(disposition.lane or "mmi")
         assigned = assign_open_for_human(ticket_id, "", assignee, force=True) if assignee else False
-        ok, detail = post_internal_note(
-            ticket_id,
-            disposition.internal_note or "No sendable draft. A person should reply.",
-            disposition.tags,
-        )
+        if (disposition.agent or "maya") in flow.NOTE_AGENTS:
+            ok, detail = post_internal_note(
+                ticket_id,
+                disposition.internal_note or "No sendable draft. A person should reply.",
+                disposition.tags,
+            )
+        else:
+            # v14: Maya assigns and tags only, no note.
+            ok, detail = _add_tags(ticket_id, list(disposition.tags)) if disposition.tags else (True, "no tags")
         packed = _pack(disposition, posted=ok, assigned=assigned, reply="", detail=detail)
         packed["assignee"] = assignee if assigned else ""
         return packed
@@ -1026,6 +1031,7 @@ def _apply_disposition(ticket_id: str, disposition: flow.Disposition) -> dict:
 
 
 def _plan(disposition: flow.Disposition) -> dict:
+    disposition = flow.without_maya_note(disposition)
     return {
         "action": disposition.action,
         "agent": disposition.agent,

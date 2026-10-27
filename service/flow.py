@@ -943,6 +943,21 @@ def is_followup(comments: list[Comment], requester_id: str) -> bool:
     return latest_after_reply
 
 
+NOTE_AGENTS = frozenset({"quinn", "rafa"})
+
+
+def without_maya_note(disposition: Disposition) -> Disposition:
+    """v14 (Akram, 27 Oct): Maya leaves no internal notes.
+
+    A Maya handoff to Meda or Alina (no hub answer, booking change, forward, vendor) only
+    assigns the ticket, sets the lane tags and leaves it open. Quinn and Rafa keep their
+    internal-note drafts for now.
+    """
+    if disposition.action in {"handoff", "internal_draft"} and (disposition.agent or "maya") not in NOTE_AGENTS:
+        disposition.internal_note = ""
+    return disposition
+
+
 def with_solve_owner(
     disposition: Disposition,
     owner_email: str,
