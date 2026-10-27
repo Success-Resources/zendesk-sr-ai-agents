@@ -313,7 +313,7 @@ def draft_note(tags: str, subject: str, description: str) -> tuple[str, str, str
     if entry is None or score < _MATCH_MIN:
         body = (
             f"No close match in the GitHub knowledge hub ({agent.title()}, score {score:.2f}). "
-            "A person should classify and reply. Do not invent a price or approve a refund."
+            "A person should classify and reply. Do not invent a price or approve a repayment."
         )
         return agent, "none", body
     log.info("hub match agent=%s question=%s score=%.2f", agent, entry.question, score)

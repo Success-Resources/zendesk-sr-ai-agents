@@ -115,7 +115,7 @@ class DecideTests(unittest.TestCase):
         self.assertNotIn("access", d.public_body.lower())
         self.assertNotIn("refund", d.public_body.lower())
         self.assertIn("Rafa draft", d.internal_note)
-        self.assertIn("Needed: review the refund", d.internal_note)
+        self.assertIn("Needed: review the payment request", d.internal_note)  # v7: note wording avoids the refund trigger word
         self.assertNotIn("working link", d.internal_note)
 
     def test_refund_on_mmi_goes_to_meda_even_if_maya_drafted(self) -> None:

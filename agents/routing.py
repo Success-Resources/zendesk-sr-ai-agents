@@ -59,8 +59,106 @@ def business_enquiry(text: str, subject: str = "") -> bool:
     return bool(BUSINESS.search(f"{subject or ''}\n{text or ''}"))
 
 
+# Money-back intent without the word "refund" (live misses 104296 and 103567, 27 Oct 2026).
+# Kept tight: a plain "cancel" or "14 days" alone is not enough; it needs a money word nearby.
+_CANCEL = r"(?:cancel\w*|annul\w*|stornier\w*|storno|k\u00fcndig\w*|kundig\w*|opzeg\w*|annuler|annulation|cancelar|anular)"
+_MONEY = (
+    r"(?:charg\w*|payments?|paid|pay|subscriptions?|membership|direct debit|instal?l?ments?|billing|billed|debit\w*|"
+    r"\$\s?\d+|\d+\s?(?:\$|\u20ac|eur|usd|gbp|\u00a3)|\u20ac\s?\d+|\u00a3\s?\d+|"
+    r"zahlung\w*|abbuch\w*|abo\w*|belast\w*|betaling\w*|afschrijving\w*|abonnement\w*|incasso|"
+    r"paiement\w*|pr\u00e9l\u00e8vement\w*|pago\w*|cargo\w*|cobro\w*|suscripci\u00f3n\w*)"
+)
+REFUND_INTENT = re.compile(
+    r"\b(?:"
+    r"(?:get|want|need|have|receive|return|give|send|sending|sent|pay)(?:ing)?\s+(?:me\s+)?(?:back\s+)?(?:my|the|our)\s+"
+    r"(?:money|payment|funds)\s+back|"
+    r"(?:send|sending|give|giving|pay|paying|return|returning)\s+(?:me\s+)?back\s+(?:the|my|our)\s+(?:money|payment|funds)|"
+    r"(?:return|returning|give back)\s+(?:of\s+)?(?:the|my|our)\s+(?:money|payment|funds)|"
+    r"pay\s+me\s+back|my\s+money\s+returned|"
+    r"cooling[\s-]*off|"
+    r"14[\s-]*(?:days?|day|-day)\b[^.\n]{0,40}\b(?:rule|right|law|period|cancel\w*|withdraw\w*|return|back|cooling|term|policy)|"
+    r"(?:rule|right|law|period|cancel\w*|withdraw\w*|back|cooling|term)\b[^.\n]{0,40}\b14[\s-]*days?|"
+    r"right\s+(?:of|to)\s+withdraw\w*|withdraw\w*\s+from\s+(?:the|my|this|our)\s+(?:contract|purchase|order|booking|agreement)|"
+    r"withdraw\s+(?:my|the|our)\s+(?:order|purchase|booking|registration)|withdrawal\s+(?:form|notice|request|period)|"
+    r"herroep\w*|terugbetal\w*|geld\s+terug|"
+    r"r\u00fcckerstatt\w*|ruckerstatt\w*|erstattung\w*|erstatten|geld\s+zur\u00fcck|widerruf\w*|r\u00fcckbuchung\w*|"
+    r"rembours\w*|r\u00e9tractation|retractation|"
+    r"reembols\w*|devoluci\u00f3n\s+del\s+dinero|devolver\s+el\s+dinero|devolu\u00e7\u00e3o|desistimiento|"
+    r"rimbors\w*|zwrot\s+pieni\w*|"
+    r"(?:do\s+not|don'?t|dont|please\s+don'?t|stop|never)\s+(?:to\s+)?charg\w*|"
+    r"(?:not|n'?t)\s+be\s+(?:charged|billed)|charged\s+(?:twice|double|again|wrongly|by mistake|in error)|"
+    r"double[\s-]+charged|wrongly\s+charged|unauthori[sz]ed\s+(?:charge|payment|transaction|debit)s?|"
+    r"dispute\s+(?:the|this|a|my)\s+(?:charge|payment|transaction)"
+    r")",
+    re.I,
+)
+_CANCEL_MONEY = re.compile(
+    rf"\b{_CANCEL}\b[^.!?\n]{{0,80}}\b{_MONEY}|\b{_MONEY}[^.!?\n]{{0,80}}\b{_CANCEL}\b",
+    re.I,
+)
+
+
 def refund_ask(text: str) -> bool:
-    return bool(REFUND.search(text or ""))
+    """Refund wording, or money-back intent in other words (EN plus basic NL/DE/FR/ES)."""
+    text = text or ""
+    return bool(REFUND.search(text) or REFUND_INTENT.search(text) or _CANCEL_MONEY.search(text))
+
+
+# Vendors, platforms and partners who write to the customer inbox. Decided by who
+# SENT the message (domain, display name, platform subject tag), never by a
+# customer merely naming the platform ("I paid through Digistore24").
+VENDOR_BRANDS = (
+    "hyros", "digistore24", "digistore", "clickbank", "thrivecart", "samcart", "copecart", "elopage", "ablefy",
+    "kajabi", "teachable", "thinkific", "clickfunnels", "stripe", "paypal", "klarna", "mollie", "adyen",
+    "gocardless", "paddle", "eventbrite", "hubspot", "activecampaign", "mailchimp", "systeme", "podia",
+)
+# Support-desk relays. Only a company's support team sends from these.
+_SUPPORT_RELAYS = ("intercom-mail.com", "intercom.io", "helpscout.net", "freshdesk.com", "zendesk.com")
+_OWN = ("srglobal", "srglobalhelp", "successresources")
+_BRAND_RX = "|".join(sorted(VENDOR_BRANDS, key=len, reverse=True))
+_NAME_FROM = re.compile(rf"\b(?:from|at|@|by|team|support)\s+({_BRAND_RX})\b|^\s*({_BRAND_RX})(?:\s+(?:gmbh|inc|ltd|support|team))?\s*$", re.I)
+_SUBJECT_TAG = re.compile(rf"^\s*\[\s*({_BRAND_RX})\b[^\]]*\]", re.I)
+# Strong B2B wording. A customer does not write like this about their own order.
+VENDOR_CONTENT = re.compile(
+    r"\b(?:"
+    r"(?:reaching out to|contact(?:ing)?|cc'?d?\s+the)\s+the\s+product\s+(?:provider|owner|vendor)|"
+    r"product\s+provider|"
+    r"(?:review and )?respond to the customer(?:'s)? (?:inquiry|enquiry|request|complaint)|"
+    r"customer (?:inquiry|enquiry|request|complaint) (?:associated with|regarding|for|about) (?:the |this )?order|"
+    r"please assist (?:the|our|your) customer|refer to the (?:customer'?s|buyer'?s) (?:request|message|inquiry|enquiry)|"
+    r"reply to all with|dear (?:vendor|merchant|seller|product (?:owner|provider))|"
+    r"(?:your|our) (?:merchant|vendor|seller|affiliate) account"
+    r")\b",
+    re.I,
+)
+
+
+def _domain(email: str) -> str:
+    email = (email or "").strip().lower()
+    return email.rsplit("@", 1)[-1] if "@" in email else ""
+
+
+def vendor_sender(email: str = "", name: str = "", subject: str = "", text: str = "") -> str:
+    """The vendor/platform name when the SENDER is a vendor, partner or system, else ""."""
+    domain = _domain(email)
+    if domain and not any(own in domain for own in _OWN):
+        labels = domain.split(".")
+        for label in labels[:-1]:
+            if label in VENDOR_BRANDS:
+                return label
+        relay = next((r for r in _SUPPORT_RELAYS if domain == r or domain.endswith("." + r)), "")
+        if relay:
+            first = labels[0].split("-")[0] if len(labels) > len(relay.split(".")) else ""
+            return first if first in VENDOR_BRANDS else (first or relay.split(".")[0])
+    m = _NAME_FROM.search(name or "")
+    if m:
+        return (m.group(1) or m.group(2)).lower()
+    m = _SUBJECT_TAG.search(subject or "")
+    if m:
+        return m.group(1).lower()
+    if VENDOR_CONTENT.search(text or ""):
+        return "b2b"
+    return ""
 
 
 def ql_family(text: str) -> bool:

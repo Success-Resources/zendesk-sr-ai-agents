@@ -38,7 +38,7 @@ from knowledge import draft_note, ensure_hub, hub_root, knowledge_status, route_
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
-from agents import forward, publictext, routing  # noqa: E402
+from agents import forward, notewords, publictext, routing  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 load_dotenv(_ROOT / ".env")
@@ -116,7 +116,7 @@ def _compose_generated_note(result) -> tuple[str, list[str], str]:
         return result.email.strip() + footer, extra, "generated_needs_human"
     body = (
         f"No sendable draft ({result.agent.title()}). {result.reason}. "
-        "A person should reply. Do not invent a price or approve a refund."
+        "A person should reply. Do not invent a price or approve a repayment."
     )
     return body, extra, "none"
 
@@ -718,8 +718,16 @@ def _truthy(value) -> bool:
 
 
 def _long_wait_apology(hints: dict | None) -> bool:
-    """LONG_WAIT_APOLOGY=true for every ticket, or long_wait_apology=true on one webhook request."""
-    return _truthy(os.getenv("LONG_WAIT_APOLOGY")) or _truthy((hints or {}).get("long_wait_apology"))
+    """Off unless asked for.
+
+    The webhook body decides when it carries long_wait_apology (true or false): a
+    catch-up run sends false for 2026 tickets and true for 2025 ones. Only when the
+    body has no such field does LONG_WAIT_APOLOGY (env, default off) apply.
+    """
+    value = (hints or {}).get("long_wait_apology")
+    if value is not None and str(value).strip() != "":
+        return _truthy(value)
+    return _truthy(os.getenv("LONG_WAIT_APOLOGY"))
 
 
 def _created_before_2026(ctx: dict) -> bool:
@@ -819,7 +827,7 @@ def _forward_note(ctx: dict, hints: dict, subject: str, staff_email: str, assign
     if qs:
         lines.append("Questions, with a suggested answer from the KB (internal only):")
         for n, question in enumerate(qs, 1):
-            lines.append(f"{n}. {question}\n   Suggested: {forward.suggest(question)}")
+            lines.append(f"{n}. {question}\n   Suggested: {notewords.scrub(forward.suggest(question))}")
     lines.append("Needed: answer the original customer, not the staff sender.")
     lines.append("\nFull message:\n" + raw[:6000])
     return "\n".join(lines)
@@ -868,13 +876,17 @@ def _apply_handoff(ticket_id: str, disposition: flow.Disposition) -> dict:
     tags = list(disposition.tags)
     note = disposition.internal_note or ""
 
-    def _note() -> None:
+    def _note(extra: list[str] | None = None) -> None:
         if note:
-            post_internal_note(ticket_id, note, ["ai_handoff_note"])
+            post_internal_note(ticket_id, note, [*(extra or []), "ai_handoff_note"])
+        elif extra:
+            _add_tags(ticket_id, extra)
 
     if not public:
         assigned = assign_open_for_human(ticket_id, "", assignee, force=True) if assignee else False
-        _note()
+        # Internal-only lanes (Quinn, Rafa, business, forwards): the lane tags (ai_quinn, ai_rafa,
+        # ai_no_public_reply, ai_draft_only, ai_generated, ...) ride on the note's tag write.
+        _note(tags)
         return _pack(
             disposition,
             posted=bool(note),
@@ -1158,6 +1170,28 @@ def _process_ticket(
             return poster(ticket_id, disposition)
         return _plan(disposition)
     person = _person(ctx, name, email, plain or customer_text)
+    vendor = routing.vendor_sender(email, name, subject, plain)
+    if vendor:
+        # Hyros, Digistore24 and other platforms are not customers. No draft (it would be a
+        # customer reply), no public text: an internal note for Meda, status open.
+        disposition = flow.decide(
+            agent="maya",
+            lane=lane,
+            needs_human=True,
+            matched="vendor",
+            public_body="",
+            note_body="",
+            assignee_email=assignee,
+            reason=f"vendor or platform sender ({vendor})",
+            subject=subject,
+            tags=tags,
+            vendor=vendor,
+            **person,
+        )
+        log.info("answer ticket_id=%s lane=%s action=%s vendor=%s live=%s", ticket_id, lane, disposition.action, vendor, live)
+        if not live:
+            return _plan(disposition)
+        return poster(ticket_id, disposition)
     old_ticket = _created_before_2026(ctx)
     if old_ticket:
         base_drafter = drafter
@@ -1326,7 +1360,8 @@ def _hints_from_body(body: dict) -> dict:
         ),
         "tags": tags,
         "recipient": body.get("recipient") or ticket.get("recipient") or "",
-        "long_wait_apology": _truthy(body.get("long_wait_apology")),
+        # None when the body has no field, so the env default (off) applies; an explicit false wins.
+        "long_wait_apology": _truthy(body["long_wait_apology"]) if body.get("long_wait_apology") not in (None, "") else None,
     }
 
 

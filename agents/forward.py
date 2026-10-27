@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from agents import facts
+from agents import facts, notewords
 
 _MARKER = re.compile(
     r"(?im)^[ \t>]*(?:-{2,}\s*(?:forwarded message|original message)\s*-{2,}|begin forwarded message:)[ \t]*$"
@@ -144,7 +144,7 @@ def note(fwd: Forward, *, staff_email: str, subject: str, assignee: str, lane: s
     if fwd.sender_email:
         customer += f" <{fwd.sender_email}>"
     lines = [
-        f"Internal forward from {staff_email}. Handoff to {who} ({lane} lane). "
+        f"Internal forward from {staff_email}. Handoff to {who} ({who} lane). "
         "No public reply was sent (it would go to the staff sender, not the customer).",
         f"Original customer: {customer}",
     ]
@@ -156,7 +156,7 @@ def note(fwd: Forward, *, staff_email: str, subject: str, assignee: str, lane: s
         lines.append("Customer's questions, with a suggested answer from the KB (internal only):")
         for n, question in enumerate(fwd.questions, 1):
             lines.append(f"{n}. {question}")
-            lines.append(f"   Suggested: {suggest(question, f"{fwd.subject} {subject}")}")
+            lines.append(f"   Suggested: {notewords.scrub(suggest(question, f"{fwd.subject} {subject}"))}")
     lines.append("")
     target = fwd.sender_email or "the original customer"
     lines.append(f"Needed: reply directly to {target}, not to {staff_email}.")

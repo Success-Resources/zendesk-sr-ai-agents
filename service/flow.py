@@ -18,7 +18,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from agents import publictext, routing  # noqa: E402
+from agents import notewords, publictext, routing  # noqa: E402
 
 # Zendesk trigger templates often drop the comma before a later field, and
 # ticket text is not JSON-escaped. Recover the ticket id from either shape.
@@ -402,7 +402,7 @@ def single_signoff(text: str) -> str:
 def is_access_issue(text: str) -> bool:
     text = text or ""
     # A refund or cancellation request is not an access problem, even if it says "unable to access".
-    if _MONEY_ASK.search(text) or routing.booking_change(text):
+    if _MONEY_ASK.search(text) or routing.refund_ask(text) or routing.booking_change(text):
         return False
     return bool(_ACCESS_ISSUE.search(text))
 
@@ -416,9 +416,40 @@ _ASSIGNEE_NAMES = {"meda.c@srglobal.com": "Meda", "alina.last@srglobal.com": "Al
 _GENERIC_REASONS = {"", "ok", "needs_human", "generated", "generated_needs_human", "none", "a person"}
 
 
+_VENDOR_NEEDED = (
+    "read the message from the vendor or platform and reply to the sender if needed. "
+    "This is not a customer, so no public reply was sent.",
+    "what the sender refers to (order, account or tracking set-up) and whether an end customer also needs an answer.",
+)
+
+
+def _lane_label(agent: str, who: str, business: bool = False) -> str:
+    """Lane names that no Zendesk keyword trigger matches (no "mmi", "refund" or programme names)."""
+    if agent == "rafa":
+        return "payments lane (Rafa)"
+    if agent == "quinn":
+        return "programme lane (Quinn)"
+    if business:
+        return "business lane (Meda)"
+    return f"{who} lane"
+
+
+_MD_IMAGE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+
+
 def _needed_for(reason: str, agent: str, text: str) -> tuple[str, str]:
-    """(what is needed, what to check). Never a bare model reason such as "ok"."""
+    """(what is needed, what to check). Never a bare model reason such as "ok".
+
+    The wording avoids every Zendesk trigger word (see agents/notewords.py).
+    """
+    needed, check = _needed_raw(reason, agent, text)
+    return notewords.scrub(needed), notewords.scrub(check)
+
+
+def _needed_raw(reason: str, agent: str, text: str) -> tuple[str, str]:
     r = (reason or "").lower()
+    if r.startswith("vendor or platform sender"):
+        return _VENDOR_NEEDED
     if "masterclass" in r:
         return (
             "send the customer working access to the Masterclass/webinar replay.",
@@ -442,19 +473,20 @@ def _needed_for(reason: str, agent: str, text: str) -> tuple[str, str]:
         return ("check the booking and resend the confirmation or e-ticket.", "the purchase email and the booking.")
     if agent == "rafa" or "refund" in r or "rafa" in r or routing.refund_ask(text):
         return (
-            "review the refund or payment request and reply to the customer (Rafa's draft is below; Maya made no promise).",
+            "review the payment request and reply to the customer (the payments-lane draft from Rafa is below; "
+            "Maya made no promise).",
             "the payment record, the purchase date, and the T&C (14-day cooling-off from purchase).",
         )
     if agent == "quinn" or routing.ql_family(text):
         return (
-            "review Quinn's draft below and reply to the customer (Quantum Leap family: QL, TTT, EWC, NWA).",
-            "the customer's QL package and the tickets or sessions in question.",
+            "review Quinn's draft below and reply to the customer (programme lane).",
+            "the customer's programme package and the tickets or sessions in question.",
         )
     if "transfer" in r:
-        return ("review the transfer (VIP, refund or legal case).", "the booking and the transfer form submission.")
+        return ("review the transfer (VIP, payment or legal case).", "the booking and the transfer form submission.")
     if agent == "rafa" or "refund" in r or "rafa" in r or _MONEY_ASK.search(text or ""):
         return (
-            "review the payment, refund or invoice request (staff decision; Maya made no promise).",
+            "review the payment or billing request (staff decision; Maya made no promise).",
             "the payment record and the T&C (14-day cooling-off from purchase).",
         )
     if "person" in r or "human" in r:
@@ -475,19 +507,32 @@ def handoff_note(
     customer_email: str = "",
     public_sent: bool = True,
     draft: str = "",
+    business: bool = False,
+    vendor: str = "",
 ) -> str:
-    """Spec handoff note: who, what they asked, what is needed, what to check."""
+    """Spec handoff note: who, what they asked, what is needed, what to check.
+
+    Zendesk keyword triggers read private notes too. Maya's own wording never
+    uses a trigger word; the customer's words are summarised with neutral words;
+    a draft keeps a trigger word only when the customer used it (notewords.scrub).
+    """
     who = _ASSIGNEE_NAMES.get((assignee_email or "").lower(), assignee_email or "a person")
+    customer_text = _MD_IMAGE.sub(" ", customer_text or "")
     asked = " / ".join(
         re.sub(r"\s+", " ", publictext.strip_customer_signoff(part)).strip()
         for part in (customer_text or "").split(" / ")
     )
     asked = re.sub(r"\s+", " ", above_quote(asked))[:600].strip()
-    draft = (draft or "").strip()
+    asked = notewords.scrub(asked)
+    draft = notewords.scrub(
+        (draft or "").strip(),
+        keep_from=customer_text,
+        keep_groups=notewords.LANE_GROUPS.get((agent or "maya").lower()),
+    )
     if len(draft) < 25 or draft.lower().rstrip(".") in {"ok", (reason or "").lower().rstrip(".")}:
         draft = ""
     needed, check = _needed_for(reason, (agent or "maya").lower(), f"{reason}\n{customer_text}")
-    head = f"Handoff to {who} ({lane or 'mmi'} lane). "
+    head = f"Handoff to {who}, {_lane_label((agent or 'maya').lower(), who, business or bool(vendor))}. "
     head += "Maya sent a short holding reply." if public_sent else "No public reply was sent."
     lines = [head]
     parts = [customer_name.strip()]
@@ -495,7 +540,10 @@ def handoff_note(
         parts.append(f"<{customer_email.strip()}>")
     customer = " ".join(part for part in parts if part)
     if customer:
-        lines.append(f"Customer: {customer}")
+        label = f"Sender (vendor or platform: {vendor})" if vendor and vendor != "b2b" else (
+            "Sender (vendor or platform)" if vendor else "Customer"
+        )
+        lines.append(f"{label}: {notewords.scrub(customer)}")
     if asked:
         lines.append(f"Asked: {asked}")
     lines.append(f"Needed: {needed}")
@@ -578,6 +626,7 @@ def decide(
     subject: str = "",
     tags=None,
     stale_facts: str | None = None,
+    vendor: str = "",
 ) -> Disposition:
     """Maya posts the public text. Noise is solved with no reply and no assignee.
 
@@ -645,6 +694,15 @@ def decide(
         agent = owner
     booking = routing.booking_change(customer_text)
     business = routing.business_enquiry(customer_text, subject)
+    # A vendor, platform or partner SENDER (Hyros, Digistore24, ...) is business, never a
+    # customer: Meda, internal note, no public reply. Decided by the sender, not by mentions.
+    vendor = vendor or routing.vendor_sender(customer_email, "", subject, customer_text)
+    if vendor:
+        adviser = False
+        booking = False
+        business = True
+        agent = "maya"
+        reason = f"vendor or platform sender ({vendor})"
     if adviser or booking or business:
         email = ""
     stale = ""
@@ -678,7 +736,7 @@ def decide(
     public = email if specific else holding_reply(greet, customer_text)
     if (adviser and skip_holding_for_internal_lanes()) or business:
         public = ""
-    if business and not adviser:
+    if business and not adviser and not vendor:
         reason = "business enquiry (supplier, sponsor or partner)"
     draft = without_staff_footer(note_body)
     if is_staff_only_text(draft):
@@ -692,6 +750,8 @@ def decide(
         draft = ""  # Maya's form reply is wrong for a booking change; do not hand it to staff as a draft.
     if draft and draft.strip() == publictext.strip_signoff(public or "").strip():
         draft = ""
+    if vendor:
+        draft = ""  # Maya's customer-style draft is wrong for a vendor (102967 got a venue in Nice).
     note = handoff_note(
         lane=lane,
         assignee_email=assignee,
@@ -702,6 +762,8 @@ def decide(
         customer_email=customer_email,
         public_sent=bool(public),
         draft=draft,
+        business=business,
+        vendor=vendor,
     )
     tags = [TAG_ASSIGNED, "ai_generated", f"ai_{agent}"]
     if public:
@@ -712,6 +774,8 @@ def decide(
         tags.append("ai_draft_only")
     if business:
         tags.append("ai_business_enquiry")
+    if vendor:
+        tags.append("ai_vendor_sender")
     if stale:
         tags.append("ai_stale_blocked")
     return Disposition(

@@ -50,7 +50,7 @@ class V5Tests(unittest.TestCase):
         self.assertFalse(flow.is_access_issue(R110357))
         self.assertNotIn("working link", flow.holding_reply("Hi Raquel,", R110357))
         needed, _check = flow._needed_for("ok", "rafa", R110357)
-        self.assertIn("refund", needed)
+        self.assertIn("payment request", needed)  # v7: the note avoids the "refund" trigger word
         self.assertTrue(flow.is_access_issue("I cannot log in to the replay, the link does not work."))
 
     def test_markdown_signature_name(self) -> None:
