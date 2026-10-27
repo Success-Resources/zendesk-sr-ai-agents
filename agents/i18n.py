@@ -30,14 +30,28 @@ _QUOTE = re.compile(
 )
 
 
+# Greetings and sign-offs that settle a short message (107110: "Bonjour, ... Merci" was 2 words short).
+_OPENERS: dict[str, re.Pattern] = {
+    "fr": re.compile(r"\b(bonjour|bonsoir|cordialement|bien \u00e0 vous|merci beaucoup)\b", re.I),
+    "nl": re.compile(r"\b(goedemorgen|goedemiddag|goedenavond|met vriendelijke groet\w*|hartelijk dank)\b", re.I),
+    "de": re.compile(r"\b(guten (?:tag|morgen|abend)|sehr geehrte\w*|mit freundlichen gr\u00fc\u00dfen|viele gr\u00fc\u00dfe|vielen dank)\b", re.I),
+    "es": re.compile(r"\b(hola|buenos d\u00edas|buenas tardes|saludos|muchas gracias)\b", re.I),
+    "it": re.compile(r"\b(buongiorno|buonasera|cordiali saluti|grazie mille)\b", re.I),
+    "pt": re.compile(r"\b(ol\u00e1|bom dia|boa tarde|cumprimentos|muito obrigad[oa])\b", re.I),
+}
+
+
 def detect_language(text: str) -> str:
     """Return one of SUPPORTED when the customer's own text is clearly in it, otherwise "en"."""
     own = _QUOTE.split("\n" + (text or ""))[0]
     own = re.sub(r"https?://\S+|\S+@\S+", " ", own)
     toks = [t.lower() for t in _TOKEN.findall(own)]
-    if len(toks) < 4:
+    if len(toks) < 3:
         return "en"
     score = {lang: sum(t in words for t in toks) for lang, words in _WORDS.items()}
+    for lang, pattern in _OPENERS.items():
+        if pattern.search(own):
+            score[lang] += 2
     best = max(SUPPORTED, key=lambda lang: score[lang])
     second = max((score[lang] for lang in SUPPORTED if lang != best), default=0)
     if score[best] >= 3 and score[best] > score["en"] * 1.5 and score[best] >= second + 2:

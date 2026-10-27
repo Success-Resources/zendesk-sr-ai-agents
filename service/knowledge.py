@@ -266,7 +266,8 @@ def route_agent(tags: str, subject: str, description: str) -> str:
     # of our own invoice email alone (104334 asked for a book copy).
     if routing and routing.invoice_ask(routing_text(description or ""), subject):
         return "rafa"
-    if tagset & {"ql", "nwa", "gbi", "ttt", "ewc"} or _QUINN_Q.search(customer):
+    folded = routing.fold(customer) if routing else customer
+    if tagset & {"ql", "nwa", "gbi", "ttt", "ewc"} or _QUINN_Q.search(customer) or _QUINN_Q.search(folded):
         return "quinn"
     if routing and routing.ql_family(customer):
         return "quinn"

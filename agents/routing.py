@@ -10,6 +10,7 @@ Quinn and Rafa write internal notes only. These tickets are never solved by Maya
 from __future__ import annotations
 
 import re
+import unicodedata
 
 REFUND = re.compile(
     r"\b(refunds?|refunded|refunding|reimburs\w*|money back|chargebacks?|charge ?back)\b",
@@ -267,8 +268,23 @@ def vendor_sender(email: str = "", name: str = "", subject: str = "", text: str 
     return ""
 
 
+def fold(text: str) -> str:
+    """Strip accents so "Train the Tra\u00eener" (107110) matches like "Train the Trainer"."""
+    decomposed = unicodedata.normalize("NFKD", text or "")
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
+
 def ql_family(text: str) -> bool:
-    return bool(QL_FAMILY.search(text or ""))
+    text = text or ""
+    return bool(QL_FAMILY.search(text) or QL_FAMILY.search(fold(text)))
+
+
+_ANOTHER_SESSION = re.compile(r"\b(?:a |an )?(?:different|another|other|later) session\b", re.I)
+_HOLDS_TICKET = re.compile(
+    r"\b(tickets?|booking|booked|bought|purchased|paid|seat|registration|registered|reservation|mmi|"
+    r"millionaire mind intensive)\b",
+    re.I,
+)
 
 
 def booking_change(text: str) -> bool:
@@ -278,6 +294,10 @@ def booking_change(text: str) -> bool:
         return False
     # "change the name on my ticket" is a name change, not a booking change.
     stripped = _NAME_CHANGE.sub(" ", text)
+    # "another session" after a missed webinar or masterclass is a replay request, not a booking
+    # change, unless the customer also talks about a ticket they hold (110534, 61934).
+    if not _HOLDS_TICKET.search(stripped):
+        stripped = _ANOTHER_SESSION.sub(" ", stripped)
     return bool(BOOKING_CHANGE.search(stripped))
 
 
