@@ -37,6 +37,40 @@ _AUTOREPLY_BODY = re.compile(
     r"out of (?:the )?office|auto-?reply|automatic reply)\b",
     re.I,
 )
+# v10: a third-party newsletter (107559, a restaurant chain's points mail) is not a customer.
+# Only a fresh mail (no reply prefix) from a non-personal domain with a marketing footer.
+_MARKETING_FOOTER = re.compile(
+    r"view\s+(?:this\s+)?(?:e-?mail\s+)?(?:in|on)\s+(?:your\s+|a\s+)?(?:web\s*)?browser|"
+    r"manage\s+(?:your\s+)?(?:e-?mail\s+|subscription\s+|communication\s+)?preferences|"
+    r"update\s+your\s+(?:e-?mail\s+)?preferences|"
+    r"you(?:'re|\s+are)\s+receiving\s+this\s+(?:e-?mail|message|newsletter)|"
+    r"you\s+(?:have\s+)?(?:subscribed|signed\s+up)\s+to\s+(?:our|this)\s+(?:newsletter|mailing\s+list|e-?mails?)|"
+    r"you\s+have\s+\*{0,2}\s*\d+\s+points|rewards?\s+balance|"
+    r"unsubscribe\s+(?:here|from\s+(?:this|our|these)\s+(?:list|e-?mails?|newsletter))|click\s+here\s+to\s+unsubscribe",
+    re.I,
+)
+_PERSONAL_DOMAIN = re.compile(
+    r"(?:^|\.)(?:gmail|googlemail|yahoo|ymail|hotmail|outlook|live|msn|icloud|me|mac|aol|gmx|web|t-online|"
+    r"proton(?:mail)?|pm|zoho|mail|yandex|qq|163|126|naver|orange|wanadoo|free|libero|virgilio|bigpond|"
+    r"btinternet|sky|telenet|ziggo|kpnmail|xs4all|seznam|wp|o2|onet|interia)\.",
+    re.I,
+)
+_REPLY_SUBJECT = re.compile(r"^\s*(?:re|aw|sv|antw|odp|rif|r|fw|fwd|wg|tr|vs)\s*:", re.I)
+_OWN_DOMAIN = re.compile(r"(?:^|\.)(?:srglobal|srglobalhelp|successresources)\.", re.I)
+
+
+def third_party_newsletter(sender: str, subject: str, body: str) -> bool:
+    """A fresh marketing mail from a company domain, never a customer reply or a personal address."""
+    domain = _domain(sender)
+    if not domain or "@" not in (sender or "") or _PERSONAL_DOMAIN.search(domain) or _OWN_DOMAIN.search(domain):
+        return False
+    if _REPLY_SUBJECT.search(subject or ""):
+        return False
+    if re.search(r"\b(?:my (?:order|ticket|booking|registration)|i (?:bought|purchased|paid|registered))\b", body or "", re.I):
+        return False
+    return bool(_MARKETING_FOOTER.search(body or ""))
+
+
 _BOUNCE_FROM = re.compile(r"^(mailer-daemon|postmaster)@", re.I)
 _BOUNCE_SUBJECT = re.compile(
     r"undeliverable|delivery status notification|mail delivery failed",
@@ -86,6 +120,8 @@ def classify(
     if tagset & _HUMAN_TAGS:
         return None
     body = text or ""
+    if third_party_newsletter(sender, subject, body):
+        return "noise_marketing"
     if _PROTECT.search(f"{subject}\n{body}"):
         return None
 

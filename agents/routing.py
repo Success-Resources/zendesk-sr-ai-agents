@@ -114,6 +114,31 @@ REFUND_INTENT = re.compile(
     r")",
     re.I,
 )
+# v10 (live misses 27 Oct 2026): "paid twice" (106491), "$114 back ... processed twice" (107666),
+# Swedish "pengar tillbaka" (107120). A double charge or an amount asked back is a refund ask,
+# and so is refund wording in the Nordic and Central/Eastern European languages we see.
+MONEY_BACK_EXTRA = re.compile(
+    r"(?<!\w)(?:"
+    r"(?:paid|pay(?:ment|ments)?|charg\w*|process\w*|debit\w*|deduct\w*|billed|taken|took|transactions?)"
+    r"[^.\n]{0,60}\btwice\b|"
+    r"\btwice\b[^.\n]{0,40}\b(?:paid|payments?|charg\w*|debit\w*|billed)|"
+    r"double[\s-]*(?:charg\w*|paid|payments?|debit\w*|billed|billing)|"
+    r"duplicate\s+(?:charges?|payments?|transactions?|debits?)|"
+    r"(?:[$\u20ac\u00a3]\s?\d[\d.,]*|\d[\d.,]*\s?(?:[$\u20ac\u00a3]|eur|usd|gbp|aud|sgd|nok|sek|dkk|chf|pln)\b)\s*back\b|"
+    # SV / NO / DA / FI
+    r"pengar\w*\s+tillbaka|\u00e5terbetal\w*|aterbetal\w*|\u00e5terbetalning\w*|tilbakebetal\w*|refusjon\w*|"
+    r"penge\w*\s+tilbag\w*|tilbagebetal\w*|hyvity\w*|rahat?\s+takaisin|"
+    # PL / HU / RO / CS / RU / TR
+    r"zwrot\w*|visszat\u00e9r\u00edt\w*|visszafizet\w*|rambursa\w*|vr\u00e1cen\u00ed\s+pen\w*|"
+    r"\u0432\u043e\u0437\u0432\u0440\u0430\u0442\w*|\u0432\u0435\u0440\u043d\u0443\u0442\u044c\s+\u0434\u0435\u043d\u044c\u0433\w*|"
+    # 100206: "Request for Cancellation of Purchase", "I need to cancel my <course> too"
+    r"cancell?ation\s+of\s+(?:my\s+|the\s+|this\s+)?(?:purchase|order|payment|enrol\w*|contract|registration)|"
+    r"(?:need|want|would like|wish|have)\s+to\s+cancel\s+(?:my|the|this)\s+(?:[\w-]+\s+){0,2}?"
+    r"(?:course|program(?:me)?|purchase|order|contract|enrol\w*|\w*teg(?:y|ies)|coaching|mentoring)\b|"
+    r"para\s+iade\w*|iade\s+(?:edin|etmek|talep\w*|istiyorum)|\u00fccret\s+iade\w*"
+    r")",
+    re.I,
+)
 # Return or refund wording in other languages (live miss 105726, 27 Oct 2026: "deseo devolver la
 # entrada adquirida") and "return my ticket" in English. A return of what was bought is a money ask.
 RETURN_INTENT = re.compile(
@@ -174,10 +199,14 @@ _CANCEL_MONEY = re.compile(
 
 
 def refund_ask(text: str) -> bool:
-    """Refund wording, or money-back intent in other words (EN plus basic NL/DE/FR/ES)."""
+    """Refund wording, or money-back intent in other words (EN, NL/DE/FR/ES, Nordic, PL/HU/RO/CS/RU/TR)."""
     text = text or ""
     return bool(
-        REFUND.search(text) or REFUND_INTENT.search(text) or RETURN_INTENT.search(text) or _CANCEL_MONEY.search(text)
+        REFUND.search(text)
+        or REFUND_INTENT.search(text)
+        or RETURN_INTENT.search(text)
+        or MONEY_BACK_EXTRA.search(text)
+        or _CANCEL_MONEY.search(text)
     )
 
 

@@ -55,6 +55,14 @@ _INTERNAL_ALERT = re.compile(
 )
 _TYPEFORM = "https://sr-event.typeform.com/to/ccysEJGM"
 _MASTERCLASS = re.compile(r"\b(masterclass|webinar)\b", re.I)
+_REPLAY_ACCESS = re.compile(
+    r"\b(?:replay|recording|link|access|log\s?in|sign\s?in|password|zoom|watch|video|stream|join|missed|miss)\w*",
+    re.I,
+)
+_CHECKOUT = re.compile(
+    r"\b(?:payment|pay|paid|card|checkout|cart|processing|deposit|instal?lments?|charged|invoice|thrivecart|bank)\b",
+    re.I,
+)
 _GDPR = re.compile(r"\b(gdpr|article\s*17|right to erasure|delete my data|erase my (personal )?data|erasure)\b", re.I)
 _TRANSFER = re.compile(
     r"\b(transfer|move my|move the ticket|another (date|city|event)|can't attend|cannot attend|can not attend)\b",
@@ -332,7 +340,17 @@ def _correct_maya(
     if re.search(r"no reply needed|this is an automated", email or "", re.I):
         return "", False, "no_reply"
 
-    if _MASTERCLASS.search(customer) or re.search(r"\bSRLE\b|presenter competition", customer, re.I):
+    # v10: the replay text only when the customer wrote about a masterclass or webinar, or the subject
+    # is a masterclass mail and the customer reports an access problem. 109175 (a Manchester seminar
+    # question under a "Masterclass" subject) got "the Masterclass replay" text.
+    # 99742 (a checkout stuck on "Processing" for a masterclass purchase) is a payment question.
+    if (
+        (
+            (_MASTERCLASS.search(words) and _REPLAY_ACCESS.search(words))
+            or (_MASTERCLASS.search(subject or "") and _REPLAY_ACCESS.search(words))
+        )
+        and not _CHECKOUT.search(words)
+    ) or re.search(r"\bSRLE\b|presenter competition", customer, re.I):
         return (
             f"{hello}\n\n"
             "Thanks for letting us know about the Masterclass replay. "
