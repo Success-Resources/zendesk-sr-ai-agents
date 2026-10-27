@@ -1,7 +1,7 @@
 # Current facts — Maya
 
 **Owner agent:** Maya
-**Updated:** 26 October 2026
+**Updated:** 27 October 2026
 
 ## Is there translation or interpretation at MMI
 
@@ -90,3 +90,27 @@ The €100 or £100 cash is for a Day 1 exercise. It is separate from the ticket
 ## A reply about a Masterclass webinar or SRLE Presenter
 
 That message is about that product, not about an MMI city. Do not send an MMI page or an unverified replay URL. The team checks the link.
+
+## When is MMI Warsaw
+
+MMI Warsaw is 14-16 May 2027. The venue is not confirmed. Say the team will send it. All dates are on https://www.millionairemind.live/.
+
+## Can I attend MMI online
+
+Only hybrid events can be attended online, and then with the same ticket. For a fully online option, point to MMI Online at https://millionairemind.online/. In-person-only events cannot be joined online; offer the transfer form https://sr-event.typeform.com/to/ccysEJGM.
+
+## What time does each day start and finish
+
+Registration opens at 8:00 and the session starts at 9:00. The days finish around 20:00-21:00. There is no exact finishing time and no fixed break schedule, because the programme is interactive. Lunch is not provided.
+
+## Which time zone is the schedule in
+
+European event schedules are given in Central European Time (CET or CEST). The team cannot issue invitations in other time zones, such as US time zones.
+
+## Can I join the crew
+
+Crew applications go through https://sr-event.com/m/crew. Applicants must have attended an MMI first. No exceptions are made.
+
+## Can I buy the books from the event
+
+Books sold at MMI can only be bought at the MMI event. They are not sold separately afterwards.
