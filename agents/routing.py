@@ -33,7 +33,28 @@ BOOKING_CHANGE = re.compile(
     r"change (?:the |my |our )?(?:tickets?|booking|order|package)|"
     r"(?:correct|fix|amend|modify|update) (?:the |my |our )?(?:tickets?|booking|order)|"
     r"swap(?:ped|ping)? (?:the |my |our )?tickets?|exchange (?:the |my |our )?tickets?|"
-    r"upgrade|upgrading|downgrade|downgrading"
+    r"upgrade|upgrading|downgrade|downgrading|"
+    # Date or event changes (106422: "postpone my attending MMI from June to July").
+    r"postpon\w*|defer(?:s|red|ring|ral)?|reschedul\w*|re-schedul\w*|"
+    r"move (?:my|our|his|her|the|me|us|him) (?:\w+ ){0,2}?(?:place|seat|spot|ticket|tickets|booking|registration|"
+    r"attendance|participation|reservation)?\s*(?:to|from) (?:the )?(?:next|later|another|other|following|future|"
+    r"january|february|march|april|may|june|july|august|september|october|november|december)|"
+    r"move (?:my|our|his|her|the) (?:place|seat|spot|ticket|tickets|booking|registration|reservation)s?|"
+    r"chang(?:e|ing) (?:the |my |our )?(?:event )?(?:dates?|event|session|city|month)|"
+    r"(?:a |an )?(?:different|another|other|later) (?:date|event|session|month|edition)|"
+    r"transfer(?:red|ring)? (?:\w+ ){0,3}?to (?:the |a |an )?(?:next|later|another|future|following) "
+    r"(?:one|event|date|session|edition|month)|"
+    r"(?:attend|join|come to|go to|switch to|move to) (?:the )?next one instead|next one instead|"
+    # nl
+    r"verplaats\w*|uitstel\w*|omboek\w*|andere datum|volgende editie|"
+    # de
+    r"verschieb\w*|verschoben|umbuch\w*|anderen termin|sp\u00e4teren termin|termin \u00e4ndern|datum \u00e4ndern|"
+    # fr
+    r"report(?:er|ez|é) (?:ma|mon|mes|la|le|ma place|\u00e0)|d[e\u00e9]cal\w*|reprogramm\w*|changer (?:la |de )?date|"
+    r"une autre date|"
+    # es
+    r"aplaz\w*|pospon\w*|pospuest\w*|reprogram\w*|cambiar (?:la )?fecha|otra fecha|"
+    r"cambiar (?:el |de )?evento"
     r")\b",
     re.I,
 )

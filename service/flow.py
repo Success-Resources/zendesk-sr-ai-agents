@@ -53,11 +53,31 @@ ACCESS_HOLDING_BODY = (
     "Thank you for letting us know, and sorry for the trouble. "
     "I have asked the team to check your access and send you a working link."
 )
+BOOKING_HOLDING_BODY = (
+    "Thank you for your message. I have passed your request to change your booking to the team, "
+    "and they will follow up with you from here."
+)
 HOLDING_REPLY = "Hello,\n\n" + HOLDING_BODY
+# The access text is only for a customer who reports missing or broken access or links
+# (106422 got it because "I am not available (June 12 to 14)").
+_ACCESS_THING = (
+    r"(?:links?|access|log ?ins?|log-ins?|sign[ -]?ins?|password|account|portal|zoom|stream|livestream|"
+    r"replay|recording|video|webinar|masterclass|session|page|platform|app)"
+)
 _ACCESS_ISSUE = re.compile(
-    r"(can'?t|cannot|unable to|not able to|couldn'?t|could not)\s+(open|access|join|log ?in|watch|view|play)|"
-    r"\b(error|not available|unavailable|not working|doesn'?t work|does not work|broken link|"
-    r"link (?:is )?(?:broken|expired|invalid)|access denied|no access|login|log in|password|replay|recording)\b",
+    r"\b(?:can'?t|cannot|can not|unable to|not able to|couldn'?t|could not|won'?t let me|doesn'?t let me)\s+"
+    r"(?:\w+\s+)?(?:open|access|join|log ?in|sign ?in|get in|get into|enter|watch|view|play|find (?:the|my|a) link)\b|"
+    r"\b" + _ACCESS_THING + r"\s+(?:\w+\s+){0,2}?(?:is |was |are |were |seems |keeps )?"
+    r"(?:not working|isn'?t working|doesn'?t work|does not work|don'?t work|won'?t (?:open|load|work)|"
+    r"broken|expired|invalid|missing|not (?:available|valid|loading|opening)|unavailable|denied|failed|failing)\b|"
+    r"\b(?:broken|expired|invalid|dead|missing|wrong) (?:\w+ )?" + _ACCESS_THING + r"\b|"
+    r"\b(?:access denied|no access|lost access|without access|wrong password|forgot (?:my )?password|"
+    r"reset (?:my |the )?password)\b|"
+    r"\b(?:have\s?n[o']t|has\s?n[o']t|did\s?n[o']t|did not|have not|never|not yet)\s+(?:\w+\s+)?"
+    r"(?:received|got|gotten|get|receive)\s+(?:the |my |a |any |an )?(?:\w+ )?(?:links?|access|log ?in|login details|password)\b|"
+    r"\b(?:no|without) (?:\w+ )?(?:links?|login details|log-in details)\b|"
+    r"\b(?:error|problem|issue|trouble)s?\s+(?:\w+\s+){0,4}?(?:log ?in|logging in|sign(?:ing)? in|access(?:ing)?|"
+    r"the link|joining|opening the)\b",
     re.I,
 )
 _MONEY_ASK = re.compile(r"\b(refund|reimburs|money back|chargeback|cancel(?:l?ation|l?ed|l?ing)?)\b", re.I)
@@ -85,7 +105,7 @@ _REASONING = re.compile(
 )
 _KEEP_ACK = {"gdpr_handoff", "unsubscribe_handoff", "masterclass_handoff"}
 
-MEDA_EMAIL = "meda.c@srglobal.com"
+MEDA_EMAIL = "meda.c@srglobal.com"  # Zendesk user 60727801768601
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -438,8 +458,13 @@ def is_access_issue(text: str) -> bool:
 
 
 def holding_reply(greet: str = "Hi there,", customer_text: str = "") -> str:
-    body = ACCESS_HOLDING_BODY if is_access_issue(customer_text) else HOLDING_BODY
-    return f"{(greet or 'Hi there,').strip()}\n\n{body}"
+    if routing.booking_change(customer_text):
+        body = BOOKING_HOLDING_BODY
+    elif is_access_issue(customer_text):
+        body = ACCESS_HOLDING_BODY
+    else:
+        body = HOLDING_BODY
+    return f"{publictext.safe_greeting(greet)}\n\n{body}"
 
 
 _ASSIGNEE_NAMES = {"meda.c@srglobal.com": "Meda", "alina.last@srglobal.com": "Alina"}
@@ -487,8 +512,9 @@ def _needed_raw(reason: str, agent: str, text: str) -> tuple[str, str]:
         )
     if "booking_change" in r or routing.booking_change(text):
         return (
-            "correct the ticket type or booking (staff change; no transfer form was sent).",
-            "the order, the ticket types bought, and what the customer wants instead.",
+            "correct the ticket type or booking, or move it to the date or event the customer asked for "
+            "(staff change; no transfer form was sent).",
+            "the order, what was bought, and what the customer wants instead (type, date or event).",
         )
     if is_access_issue(text):
         return (
@@ -626,7 +652,7 @@ def public_text_for_handoff(email: str, *, assigned: bool, greet: str | None = N
     """Customer text for a handoff. A handoff claim stays only when we assign."""
     text = without_staff_footer(email)
     if greet is None:
-        greet = publictext.existing_greeting(text) or "Hi there,"
+        greet = publictext.safe_greeting(publictext.existing_greeting(text) or "Hi there,")
     if not text or is_staff_only_text(text):
         return holding_reply(greet) if assigned else ""
     if assigned or not promises_handoff(text):
@@ -666,13 +692,13 @@ def decide(
     always opens with a greeting.
     """
     agent = (agent or "maya").lower()
-    greet = (greeting or "Hi there,").strip()
+    greet = publictext.safe_greeting(greeting or "Hi there,")
     if publictext.is_fallback_greeting(greet):
         drafted = publictext.draft_first_name(
             public_body or note_body or "", f"{customer_name}\n{customer_email}\n{customer_text}"
         )
         if drafted:
-            greet = f"Hi {drafted},"
+            greet = publictext.safe_greeting(f"Hi {drafted},")
     if lane == "srv":
         return Disposition(
             action="skip_srv",
@@ -762,7 +788,8 @@ def decide(
             tags=[TAG_ANSWERED, "ai_generated", "ai_maya", "ai_public_reply", "ai_solved"],
         )
 
-    assignee = MEDA_EMAIL if business else _default_assignee(lane, assignee_email)
+    # Business and booking changes (date, event, type) are Meda's, also for mmo@ (106422).
+    assignee = MEDA_EMAIL if (business or booking) else _default_assignee(lane, assignee_email)
     public = email if specific else holding_reply(greet, customer_text)
     if (adviser and skip_holding_for_internal_lanes()) or business:
         public = ""
@@ -835,7 +862,7 @@ def human_request_disposition(
         action="handoff",
         agent="maya",
         reason="asked for a person",
-        public_body=f"{(greeting or 'Hi there,').strip()}\n\n{HOLDING_BODY}",
+        public_body=f"{publictext.safe_greeting(greeting or 'Hi there,')}\n\n{HOLDING_BODY}",
         internal_note=handoff_note(
             lane=lane,
             assignee_email=assignee_email,

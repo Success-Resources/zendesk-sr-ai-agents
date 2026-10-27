@@ -37,11 +37,19 @@ _FOREIGN_GREETING = re.compile(
     r"buongiorno|buenos d[ií]as|olá|oi|cze[sś][cć]|dzie[nń] dobry|witam|hej)\b[^\n]{0,60}\n",
     re.I,
 )
+# Titles and honorifics are never a first name (105974 got "Hi Dr,").
+_TITLE_WORDS = (
+    r"dr|drs|doctor|dott|dottssa|dottoressa|mr|mrs|ms|miss|mx|mstr|prof|professor|sir|madam|madame|"
+    r"dame|lord|lady|rev|revd|hon|dhr|mevr|mevrouw|mw|heer|herr|frau|fr|hr|sr|sra|srta|se\u00f1or|se\u00f1ora|"
+    r"se\u00f1orita|senor|senora|do\u00f1a|mme|mlle|mlles|mmes|m|monsieur|messrs|sig|sigra|signor|signora|"
+    r"ing|mag|ir|pani|engr|capt|sgt"
+)
 _NAME = r"[A-ZÀ-ÖØ-ÞİŁŚŻŹĆŃÓ][a-zà-öø-ÿıłśżźćńó'’-]{1,20}"
 _SIGNED = re.compile(
     r"(?im)^[ \t]*(?:(?:best|kind|warm|many|with)\s+)?(?:regards|wishes|thanks|thank you|best|cheers|"
     r"sincerely|cordially|greetings|saludos|cordiali saluti|grazie|merci|danke|pozdrawiam)"
-    r"[ \t]*[,.!]?[ \t]*\n(?:[ \t]*\n){0,3}[ \t]*(" + _NAME + r")(?:[ \t]+" + _NAME + r")*[ \t]*$"
+    r"[ \t]*[,.!]?[ \t]*\n(?:[ \t]*\n){0,3}[ \t]*(?:(?P<title>(?i:" + _TITLE_WORDS + r")\.?)[ \t]+)?"
+    r"(" + _NAME + r")(?P<more>(?:[ \t]+" + _NAME + r")*)[ \t]*$"
 )
 # Mobile and mail-client footers. Their first word is not the sender's name.
 _MOBILE_FOOTER = re.compile(
@@ -79,6 +87,36 @@ _NOT_A_PERSON = re.compile(
 )
 
 
+_TITLE = re.compile(r"(?i)^(?:" + _TITLE_WORDS + r")\.?$")
+_TITLE_TOKEN = r"(?:(?i:" + _TITLE_WORDS + r")\.?)"
+
+
+def is_title(word: str) -> bool:
+    return bool(_TITLE.match((word or "").strip().strip(",")))
+
+
+def _without_titles(parts: list[str]) -> list[str]:
+    parts = list(parts)
+    while parts and is_title(parts[0]):
+        parts.pop(0)
+    return parts
+
+
+def safe_greeting(greet: str) -> str:
+    """Never greet with a title: "Hi Dr," and "Hi Dr Smith," -> "Hi there,"; "Hi Dr Jane Smith," -> "Hi Jane,"."""
+    greet = (greet or "").strip() or FALLBACK_GREETING
+    match = re.match(r"(?is)^(hi|hello|hey|dear)\s+(.+?)\s*([,!])$", greet)
+    if not match:
+        return greet
+    words = match.group(2).split()
+    if not words or not is_title(words[0]):
+        return greet
+    rest = _without_titles(words)
+    if len(rest) >= 2 and re.fullmatch(_NAME, rest[0]) and not is_mobile_word(rest[0]):
+        return f"{match.group(1)} {rest[0]}{match.group(3)}"
+    return FALLBACK_GREETING
+
+
 _PARTICLES = {"van", "der", "den", "de", "del", "della", "da", "di", "do", "dos", "das", "du", "von", "zu",
               "la", "le", "el", "al", "bin", "ten", "ter", "op", "vd", "v.d."}
 
@@ -88,6 +126,8 @@ def _first_name(raw: str) -> str:
     if not name or "@" in name or _NOT_A_PERSON.search(name):
         return ""
     parts = [p for p in re.split(r"\s+", name) if p]
+    # "Dr Jane Smith" -> Jane; "Dr Smith" or "Mr." alone -> no name.
+    parts = _without_titles(parts)
     if len(parts) < 2:
         return ""
     first, rest = parts[0], parts[1:]
@@ -97,7 +137,7 @@ def _first_name(raw: str) -> str:
     rest = [p for p in rest if p.lower() not in _PARTICLES] or rest
     if not (re.fullmatch(_NAME, first) and re.fullmatch(_NAME, rest[0])):
         return ""
-    if is_mobile_word(first):
+    if is_mobile_word(first) or is_title(first):
         return ""
     return first
 
@@ -109,7 +149,9 @@ def signed_first_name(text: str) -> str:
     body = re.sub(r"[*_]+", "", body)  # markdown such as **_Marina Mursic_**
     found = ""
     for match in _SIGNED.finditer(body):
-        found = match.group(1)
+        found = match.group(2)
+        if is_title(found) or (match.group("title") and not match.group("more").strip()):
+            found = ""  # "Dr Smith": a title and a surname is not a first name
     if found and (_NOT_A_PERSON.search(found) or is_mobile_word(found)):
         return ""
     return found
@@ -151,7 +193,7 @@ def draft_first_name(draft: str, evidence: str) -> str:
     if not match:
         return ""
     name = match.group(1)
-    if is_mobile_word(name) or _NOT_A_PERSON.search(name):
+    if is_mobile_word(name) or _NOT_A_PERSON.search(name) or is_title(name):
         return ""
     hay = strip_mobile_footer(evidence or "").lower()
     return name if name.lower() in hay else ""
@@ -200,7 +242,7 @@ def with_greeting(text: str, greet: str) -> str:
     body = (text or "").strip()
     if not body:
         return ""
-    greet = (greet or FALLBACK_GREETING).strip()
+    greet = safe_greeting(greet or FALLBACK_GREETING)
     foreign = _FOREIGN_GREETING.match(body + "\n")
     if foreign:
         line = foreign.group(0).strip()
