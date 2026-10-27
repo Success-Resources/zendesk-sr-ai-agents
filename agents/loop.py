@@ -300,7 +300,9 @@ def _signed_first_name(description: str) -> str:
 
 
 def _hello(name: str, description: str = "") -> str:
-    """Real first name only ("Hi Maria,"). Handles such as Roellamyecampos get "Hello,"."""
+    """Real first name only ("Hi Maria,"). The requester name wins; handles get "Hi there,"."""
+    if publictext.first_name(name):
+        return publictext.greeting(name)
     signed = _signed_first_name(description)
     if signed:
         return f"Hi {signed},"

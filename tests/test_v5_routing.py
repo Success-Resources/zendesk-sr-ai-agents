@@ -6,6 +6,8 @@
 """
 
 from __future__ import annotations
+from unittest import mock
+import os
 
 import sys
 import unittest
@@ -79,6 +81,7 @@ class RoutingTests(unittest.TestCase):
 
 
 class DecideTests(unittest.TestCase):
+    @mock.patch.dict(os.environ, {"SKIP_HOLDING_REPLY_FOR_INTERNAL_LANES": "false"})
     def test_110401_ql_family_goes_to_quinn_internal_only(self) -> None:
         d = _decide("quinn", "mmi", Q110401_DRAFT, T110401, "Marina Mursic", "d@example.com", "meda.c@srglobal.com")
         self.assertEqual(d.action, "handoff")
@@ -101,6 +104,7 @@ class DecideTests(unittest.TestCase):
                     "j@example.com", "alina.last@srglobal.com")
         self.assertEqual((d.action, d.status, d.assignee_email), ("handoff", "open", "alina.last@srglobal.com"))
 
+    @mock.patch.dict(os.environ, {"SKIP_HOLDING_REPLY_FOR_INTERNAL_LANES": "false"})
     def test_110357_refund_goes_to_rafa_no_link_promise(self) -> None:
         d = _decide("rafa", "mmo", "Hi Raquel,\n\nWe will refund you.", T110357, "Raquel Benítez",
                     "raquelbeni0977@gmail.com", "alina.last@srglobal.com",

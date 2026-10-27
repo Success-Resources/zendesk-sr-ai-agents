@@ -1,6 +1,8 @@
 """v4 fixes: no Maya sign-off, a real greeting, full forwards, useful handoff notes."""
 
 from __future__ import annotations
+from unittest import mock
+import os
 
 import sys
 import unittest
@@ -51,6 +53,7 @@ class SignoffTests(unittest.TestCase):
         self.assertNotIn("Evelin", out)
         self.assertTrue(out.endswith("Here are the dates."))
 
+    @mock.patch.dict(os.environ, {"SKIP_HOLDING_REPLY_FOR_INTERNAL_LANES": "false"})
     def test_quinn_answer_posted_by_maya_has_greeting_and_no_signoff(self) -> None:
         ctx = _ctx(requester_name="Maria Faustino")
         draft = _draft(agent="quinn", public_body="Here are the QL dates.\n\nWarm regards,\nQuinn\nSuccess Resources Support")
@@ -67,9 +70,9 @@ class GreetingTests(unittest.TestCase):
         self.assertEqual(publictext.greeting("mahesh m", ["Any update?\n\nRegards\n\nMahesh Makkimane"]), "Hi Mahesh,")
 
     def test_company_and_handle_fall_back(self) -> None:
-        self.assertEqual(publictext.greeting("Acme Trading Ltd"), "Hello,")
-        self.assertEqual(publictext.greeting("Roellamyecampos"), "Hello,")
-        self.assertEqual(publictext.greeting("Support Team"), "Hello,")
+        self.assertEqual(publictext.greeting("Acme Trading Ltd"), "Hi there,")
+        self.assertEqual(publictext.greeting("Roellamyecampos"), "Hi there,")
+        self.assertEqual(publictext.greeting("Support Team"), "Hi there,")
 
     def test_two_word_name(self) -> None:
         self.assertEqual(_hello("Maria Faustino"), "Hi Maria,")

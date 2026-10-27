@@ -1,6 +1,7 @@
 """Maya's public reply, handoff, claim, and backfill decisions."""
 
 from __future__ import annotations
+from unittest import mock
 
 import asyncio
 import json
@@ -125,6 +126,7 @@ class DecideTests(unittest.TestCase):
         self.assertIn("ai_draft_only", disposition.tags)
         self.assertNotIn(flow.TAG_ANSWERED, disposition.tags)
 
+    @mock.patch.dict(os.environ, {"SKIP_HOLDING_REPLY_FOR_INTERNAL_LANES": "false"})
     def test_rafa_draft_is_not_the_public_reply(self) -> None:
         disposition = flow.decide(
             agent="rafa",

@@ -33,12 +33,12 @@ from fastapi.responses import JSONResponse
 
 import flow
 import noise
-from knowledge import draft_note, ensure_hub, knowledge_status, route_agent
+from knowledge import draft_note, ensure_hub, hub_root, knowledge_status, route_agent
 
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
-from agents import forward, publictext  # noqa: E402
+from agents import forward, publictext, routing  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 load_dotenv(_ROOT / ".env")
@@ -473,7 +473,49 @@ def fetch_ticket_tags(ticket_id: str) -> list[str]:
         return []
 
 
+def _add_tags(ticket_id: str, tags: list[str]) -> tuple[bool, str]:
+    """Add tags without replacing the existing ones (PUT /tickets/{id}/tags).
+
+    The single-ticket update endpoint ignores additional_tags, which is why no
+    ai_* tag was ever written before this.
+    """
+    tags = [str(tag) for tag in tags or [] if str(tag).strip()]
+    if not tags:
+        return True, "no tags"
+    creds = _zendesk_auth_header()
+    if not creds:
+        return False, "missing Zendesk credentials"
+    subdomain, auth = creds
+    req = UrlRequest(
+        f"https://{subdomain}.zendesk.com/api/v2/tickets/{ticket_id}/tags.json",
+        data=json.dumps({"tags": tags}).encode("utf-8"),
+        method="PUT",
+        headers={"Authorization": auth, "Content-Type": "application/json", "Accept": "application/json"},
+    )
+    try:
+        with urlopen(req, timeout=20) as resp:
+            return True, f"tags {getattr(resp, 'status', 200)}"
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:300]
+        log.error("zendesk add tags failed ticket_id=%s status=%s body=%s", ticket_id, exc.code, detail)
+        return False, f"tags {exc.code}"
+    except URLError as exc:
+        log.error("zendesk add tags failed ticket_id=%s error=%s", ticket_id, exc)
+        return False, "tags connection error"
+
+
 def _put_ticket(ticket_id: str, ticket: dict) -> tuple[bool, str]:
+    ticket = dict(ticket)
+    extra_tags = list(ticket.pop("additional_tags", None) or [])
+    if not ticket:
+        return _add_tags(ticket_id, extra_tags)
+    ok, detail = _put_ticket_raw(ticket_id, ticket)
+    if ok and extra_tags:
+        _add_tags(ticket_id, extra_tags)
+    return ok, detail
+
+
+def _put_ticket_raw(ticket_id: str, ticket: dict) -> tuple[bool, str]:
     creds = _zendesk_auth_header()
     if not creds:
         return False, "missing ZENDESK_SUBDOMAIN, ZENDESK_EMAIL, or ZENDESK_API_TOKEN"
@@ -650,6 +692,7 @@ def _load_context(ticket_id: str) -> dict | None:
         "tags": ticket.get("tags") or [],
         "recipient": str(ticket.get("recipient") or ""),
         "status": str(ticket.get("status") or ""),
+        "created_at": str(ticket.get("created_at") or ""),
         "requester_id": requester_id,
         "requester_email": str(requester.get("email") or ""),
         "requester_name": str(requester.get("name") or ""),
@@ -657,6 +700,41 @@ def _load_context(ticket_id: str) -> dict | None:
         "comments": comments,
         "users": users,
     }
+
+
+OLD_TICKET_BRIEF = (
+    "OLD TICKET: the customer wrote this on {created}, before 2026, and we are only answering now. "
+    "Any event, date, offer or link it mentions may be over. Never quote a past event date, a 2025 date "
+    "or a link from the customer's message or from memory. If the question is about a past event or is "
+    "no longer relevant, say so briefly and mention only the upcoming events listed in the current facts; "
+    "that is a finished answer. If a person still has to act (refund, payment, access, a booking), hand off.\n\n"
+)
+
+
+def _truthy(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _long_wait_apology(hints: dict | None) -> bool:
+    """LONG_WAIT_APOLOGY=true for every ticket, or long_wait_apology=true on one webhook request."""
+    return _truthy(os.getenv("LONG_WAIT_APOLOGY")) or _truthy((hints or {}).get("long_wait_apology"))
+
+
+def _created_before_2026(ctx: dict) -> bool:
+    created = str((ctx or {}).get("created_at") or "")
+    return bool(created) and created[:4].isdigit() and int(created[:4]) < 2026
+
+
+def _current_facts() -> str:
+    """Maya's current-facts page, the only source of dates and links for an old ticket."""
+    try:
+        root = hub_root()
+        return (root / "00-current-facts" / "maya.md").read_text(encoding="utf-8")
+    except Exception:
+        log.exception("current facts unavailable")
+        return ""
 
 
 def _tag_text(tags) -> str:
@@ -1046,6 +1124,9 @@ def _process_ticket(
         text=plain,
         tags=tags,
     )
+    if noise_tag == "noise_vendor" and routing.business_enquiry(plain, subject):
+        # Quotes, sponsorship, partnership and supplier offers go to Meda as a note, not a silent close.
+        noise_tag = None
     if noise_tag:
         disposition = flow.decide(
             agent="maya",
@@ -1077,6 +1158,16 @@ def _process_ticket(
             return poster(ticket_id, disposition)
         return _plan(disposition)
     person = _person(ctx, name, email, plain or customer_text)
+    old_ticket = _created_before_2026(ctx)
+    if old_ticket:
+        base_drafter = drafter
+
+        def drafter(**kw):  # noqa: F811 - same drafter, with the old-ticket brief first
+            kw["description"] = OLD_TICKET_BRIEF.format(created=str(ctx.get("created_at") or "")[:10]) + str(
+                kw.get("description") or ""
+            )
+            return base_drafter(**kw)
+
     if asks_for_human(subject, customer_text):
         disposition = flow.human_request_disposition(lane, assignee, **person)
     else:
@@ -1130,9 +1221,15 @@ def _process_ticket(
             note_body=draft.note_body,
             assignee_email=assignee,
             reason=draft.reason,
+            subject=subject,
+            tags=tags,
+            stale_facts=_current_facts() if old_ticket else None,
             **person,
         )
         disposition = flow.merge_tags(disposition, draft.extra_tags)
+    if disposition.public_body and _long_wait_apology(hints):
+        disposition.public_body = publictext.with_long_wait_apology(disposition.public_body)
+        disposition.tags = [*disposition.tags, "ai_long_wait_apology"]
     log.info(
         "answer ticket_id=%s lane=%s action=%s agent=%s live=%s reason=%s",
         ticket_id,
@@ -1229,6 +1326,7 @@ def _hints_from_body(body: dict) -> dict:
         ),
         "tags": tags,
         "recipient": body.get("recipient") or ticket.get("recipient") or "",
+        "long_wait_apology": _truthy(body.get("long_wait_apology")),
     }
 
 

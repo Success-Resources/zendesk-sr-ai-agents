@@ -72,8 +72,8 @@ class HygieneTests(unittest.TestCase):
         self.assertTrue(text.endswith("The form is here."))
 
     def test_hello_uses_signed_name(self) -> None:
-        self.assertEqual(_hello("Roellamyecampos"), "Hello,")
-        self.assertEqual(_hello("Brunhildatan"), "Hello,")
+        self.assertEqual(_hello("Roellamyecampos"), "Hi there,")
+        self.assertEqual(_hello("Brunhildatan"), "Hi there,")
         self.assertEqual(_hello("Maria Faustino"), "Hi Maria,")
         signed = "Please move my ticket.\n\nBest regards,\nMaria Faustino"
         self.assertEqual(_hello("Roellamyecampos", signed), "Hi Maria,")

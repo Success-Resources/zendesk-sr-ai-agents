@@ -6,6 +6,7 @@ No Zendesk calls live here. service/app.py and scripts/backfill.py apply the res
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import threading
@@ -83,6 +84,63 @@ _REASONING = re.compile(
     re.I,
 )
 _KEEP_ACK = {"gdpr_handoff", "unsubscribe_handoff", "masterclass_handoff"}
+
+MEDA_EMAIL = "meda.c@srglobal.com"
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = (os.getenv(name) or "").strip().lower()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "on"}
+
+
+def skip_holding_for_internal_lanes() -> bool:
+    """SKIP_HOLDING_REPLY_FOR_INTERNAL_LANES (default on): Quinn and Rafa tickets get no public reply."""
+    return _env_flag("SKIP_HOLDING_REPLY_FOR_INTERNAL_LANES", True)
+
+
+_STALE_YEAR = re.compile(r"\b(20\d\d)\b")
+_MONTHS = (
+    "january|february|march|april|may|june|july|august|september|october|november|december|"
+    "jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec"
+)
+_DATE_MENTION = re.compile(
+    r"\b(\d{1,2}(?:\s*[-–]\s*\d{1,2})?)(?:st|nd|rd|th)?\s+(?:of\s+)?(" + _MONTHS + r")\b",
+    re.I,
+)
+_URL = re.compile(r"https?://[^\s)>\]]+", re.I)
+
+
+def _norm_date(day: str, month: str) -> str:
+    day = re.sub(r"\s*[-–]\s*", "-", day.strip())
+    return f"{day} {month.lower()[:3]}"
+
+
+def stale_content(text: str, facts: str, current_year: int = 2026) -> str:
+    """Why a reply to an old ticket is stale, or "".
+
+    A year before current_year, a date that is not in the current facts, or a
+    link that is not in the current facts (a bare site homepage is fine).
+    """
+    body = text or ""
+    hay = facts or ""
+    for year in _STALE_YEAR.findall(body):
+        if int(year) < current_year:
+            return f"past year {year}"
+    known = {_norm_date(d, m) for d, m in _DATE_MENTION.findall(hay)}
+    for day, month in _DATE_MENTION.findall(body):
+        if _norm_date(day, month) not in known:
+            return f"date not in current facts: {day} {month}"
+    for url in _URL.findall(body):
+        url = url.rstrip(".,;:!?'\"")
+        bare = re.sub(r"^https?://", "", url).rstrip("/")
+        if "/" not in bare:
+            continue
+        if url.rstrip("/") not in hay and bare not in hay:
+            return f"link not in current facts: {url}"
+    return ""
+
 
 TAG_ANSWERED = "ai_answered"
 TAG_ASSIGNED = "ai_assigned_human"
@@ -349,9 +407,9 @@ def is_access_issue(text: str) -> bool:
     return bool(_ACCESS_ISSUE.search(text))
 
 
-def holding_reply(greet: str = "Hello,", customer_text: str = "") -> str:
+def holding_reply(greet: str = "Hi there,", customer_text: str = "") -> str:
     body = ACCESS_HOLDING_BODY if is_access_issue(customer_text) else HOLDING_BODY
-    return f"{(greet or 'Hello,').strip()}\n\n{body}"
+    return f"{(greet or 'Hi there,').strip()}\n\n{body}"
 
 
 _ASSIGNEE_NAMES = {"meda.c@srglobal.com": "Meda", "alina.last@srglobal.com": "Alina"}
@@ -490,7 +548,7 @@ def public_text_for_handoff(email: str, *, assigned: bool, greet: str | None = N
     """Customer text for a handoff. A handoff claim stays only when we assign."""
     text = without_staff_footer(email)
     if greet is None:
-        greet = publictext.existing_greeting(text) or "Hello,"
+        greet = publictext.existing_greeting(text) or "Hi there,"
     if not text or is_staff_only_text(text):
         return holding_reply(greet) if assigned else ""
     if assigned or not promises_handoff(text):
@@ -513,10 +571,13 @@ def decide(
     reason: str = "",
     noise_tag: str = "",
     forward: bool = False,
-    greeting: str = "Hello,",
+    greeting: str = "Hi there,",
     customer_text: str = "",
     customer_name: str = "",
     customer_email: str = "",
+    subject: str = "",
+    tags=None,
+    stale_facts: str | None = None,
 ) -> Disposition:
     """Maya posts the public text. Noise is solved with no reply and no assignee.
 
@@ -526,7 +587,13 @@ def decide(
     always opens with a greeting.
     """
     agent = (agent or "maya").lower()
-    greet = (greeting or "Hello,").strip()
+    greet = (greeting or "Hi there,").strip()
+    if publictext.is_fallback_greeting(greet):
+        drafted = publictext.draft_first_name(
+            public_body or note_body or "", f"{customer_name}\n{customer_email}\n{customer_text}"
+        )
+        if drafted:
+            greet = f"Hi {drafted},"
     if lane == "srv":
         return Disposition(
             action="skip_srv",
@@ -572,16 +639,26 @@ def decide(
         email = publictext.clean_public(email, greet)
     # Routing rules (Akram, 26 Oct): refund -> Rafa, QL family -> Quinn, booking change -> a person.
     # These are never solved by Maya, even when a draft looks grounded.
-    owner = routing.owner(customer_text) if customer_text else "maya"
+    owner = routing.owner(customer_text, subject, tags) if (customer_text or subject or tags) else "maya"
     adviser = agent in {"quinn", "rafa"} or owner in {"quinn", "rafa"}
+    if adviser and agent not in {"quinn", "rafa"}:
+        agent = owner
     booking = routing.booking_change(customer_text)
-    if adviser or booking:
+    business = routing.business_enquiry(customer_text, subject)
+    if adviser or booking or business:
         email = ""
+    stale = ""
+    if email and stale_facts is not None:
+        stale = stale_content(email, stale_facts)
+        if stale:
+            email = ""
+            reason = f"stale content blocked ({stale})"
     specific = reason in _KEEP_ACK and email and not public_is_unsafe(public_body or "")
     handoff = (
         needs_human
         or adviser
         or booking
+        or business
         or not email
         or (promises_handoff(email) and not specific)
     )
@@ -597,8 +674,12 @@ def decide(
             tags=[TAG_ANSWERED, "ai_generated", "ai_maya", "ai_public_reply", "ai_solved"],
         )
 
-    assignee = _default_assignee(lane, assignee_email)
+    assignee = MEDA_EMAIL if business else _default_assignee(lane, assignee_email)
     public = email if specific else holding_reply(greet, customer_text)
+    if (adviser and skip_holding_for_internal_lanes()) or business:
+        public = ""
+    if business and not adviser:
+        reason = "business enquiry (supplier, sponsor or partner)"
     draft = without_staff_footer(note_body)
     if is_staff_only_text(draft):
         draft = ""
@@ -622,9 +703,17 @@ def decide(
         public_sent=bool(public),
         draft=draft,
     )
-    tags = [TAG_ASSIGNED, "ai_generated", f"ai_{agent}", "ai_public_reply"]
+    tags = [TAG_ASSIGNED, "ai_generated", f"ai_{agent}"]
+    if public:
+        tags.append("ai_public_reply")
+    else:
+        tags.append("ai_no_public_reply")
     if adviser:
         tags.append("ai_draft_only")
+    if business:
+        tags.append("ai_business_enquiry")
+    if stale:
+        tags.append("ai_stale_blocked")
     return Disposition(
         action="handoff",
         agent=agent,
@@ -643,7 +732,7 @@ def human_request_disposition(
     lane: str,
     assignee_email: str,
     *,
-    greeting: str = "Hello,",
+    greeting: str = "Hi there,",
     customer_text: str = "",
     customer_name: str = "",
     customer_email: str = "",
@@ -652,7 +741,7 @@ def human_request_disposition(
         action="handoff",
         agent="maya",
         reason="asked for a person",
-        public_body=f"{(greeting or 'Hello,').strip()}\n\n{HOLDING_BODY}",
+        public_body=f"{(greeting or 'Hi there,').strip()}\n\n{HOLDING_BODY}",
         internal_note=handoff_note(
             lane=lane,
             assignee_email=assignee_email,
