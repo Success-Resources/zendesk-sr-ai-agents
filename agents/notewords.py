@@ -10,6 +10,8 @@ included, and they add tags and change the priority:
   GBI, guerilla (and misspellings)            -> gbi
   millionaire, MMI                            -> mmi
   invoice, invoices, invoicing                -> invoice_request finance_related
+  confirmation link, missing confirmation     -> missing_confirmation
+  registration link, access link              -> access_or_registration_link
 So the note's own wording (lane names, "Needed:", "What to check:") must not use
 those words. Customer quotes in a note are rewritten to neutral words as well.
 Drafts keep a word only when the customer used it themselves, so the tag it adds
@@ -34,6 +36,7 @@ _RULES: list[tuple[str, str, str]] = [
     ("ql", r"quantum[\s-]*leap", "QLeap"),
     ("ql", r"quantum", "QLeap"),
     ("ql", r"QL", "QLeap"),
+    ("ql", r"leaps?", "jump"),
     ("ttt", r"train[\s-]+the[\s-]+trainer", "T3"),
     ("ttt", r"TTT", "T3"),
     ("ewc", r"enlightened[\s-]+warriors?(?:[\s-]+camp)?", "EWCamp"),
@@ -46,9 +49,21 @@ _RULES: list[tuple[str, str, str]] = [
     ("gbi", r"gu?err?ill?a[\s-]+business(?:[\s-]+intensive)?", "GBIntensive"),
     ("gbi", r"gu?err?ill?a|gurr?ill?a", "GBIntensive"),
     ("gbi", r"GBI", "GBIntensive"),
-    ("mmi", r"millionaire[\s-]+mind(?:[\s-]+intensive)?", "MM-Intensive"),
+    ("mmi", r"millionaire[\s-]+mind[\s-]+intensive", "MM-Intensive"),
+    # The book "Secrets of the Millionaire Mind" is not the event (104334).
+    ("mmi", r"millionaire[\s-]+mind", "M-Mind"),
     ("mmi", r"millionaires?", "MM-Intensive"),
     ("mmi", r"MMI", "MM-Intensive"),
+    ("invoice", r"an\s+invoice", "a bill"),
+    ("invoice", r"invoices", "bills"),
+    ("invoice", r"invoicing", "billing"),
+    ("invoice", r"invoiced", "billed"),
+    ("invoice", r"invoice", "bill"),
+    ("link", r"confirmation[\s-]+links?", "confirmation URL"),
+    ("link", r"registration[\s-]+links?", "sign-up URL"),
+    ("link", r"access[\s-]+links?", "access URL"),
+    ("link", r"missing[\s-]+confirmations?", "confirmation not received"),
+    ("link", r"confirmations?[\s-]+missing", "confirmation not received"),
 ]
 _COMPILED = [(group, re.compile(rf"(?<!\w)(?:{pat})(?!\w)", re.I), rep) for group, pat, rep in _RULES]
 
@@ -66,7 +81,8 @@ def _groups_in(text: str) -> set[str]:
     return {group for group, rx, _rep in _COMPILED if rx.search(text or "")}
 
 
-LANE_GROUPS = {"quinn": {"ql", "ttt", "ewc", "nwa", "gbi"}, "rafa": {"money"}}
+# Staff drafts (Quinn, Rafa) may keep their lane's words: that tag is the right tag.
+LANE_GROUPS = {"quinn": {"ql", "ttt", "ewc", "nwa", "gbi"}, "rafa": {"money", "invoice"}}
 
 
 def scrub(text: str, keep_from: str | None = None, keep_groups=None) -> str:

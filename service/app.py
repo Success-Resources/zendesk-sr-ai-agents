@@ -822,14 +822,14 @@ def _forward_note(ctx: dict, hints: dict, subject: str, staff_email: str, assign
     qs = forward.questions(raw)
     lines = [
         f"Internal message from {staff_email}. No public reply was sent.",
-        f"Subject: {subject}",
+        f"Subject: {notewords.scrub(subject)}",
     ]
     if qs:
         lines.append("Questions, with a suggested answer from the KB (internal only):")
         for n, question in enumerate(qs, 1):
-            lines.append(f"{n}. {question}\n   Suggested: {notewords.scrub(forward.suggest(question))}")
+            lines.append(f"{n}. {notewords.scrub(question)}\n   Suggested: {notewords.scrub(forward.suggest(question))}")
     lines.append("Needed: answer the original customer, not the staff sender.")
-    lines.append("\nFull message:\n" + raw[:6000])
+    lines.append("\nFull message (trigger words neutralised):\n" + notewords.scrub(raw[:6000]))
     return "\n".join(lines)
 
 

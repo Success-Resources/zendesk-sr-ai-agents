@@ -236,7 +236,7 @@ def load_entries(agent: str, refresh: bool = True) -> list[Entry]:
 
 
 _RAFA_Q = re.compile(
-    r"\b(refund|money back|invoice|vat invoice|charged twice|double charged|payment (?:failed|declined))\b",
+    r"\b(refund|money back|charged twice|double charged|payment (?:failed|declined))\b",
     re.I,
 )
 _QUINN_Q = re.compile(
@@ -261,6 +261,10 @@ def route_agent(tags: str, subject: str, description: str) -> str:
     except ImportError:  # pragma: no cover
         routing = None  # type: ignore
     if _RAFA_Q.search(customer) or (routing and routing.refund_ask(customer)):
+        return "rafa"
+    # Invoice/receipt requests: the customer's own words, or a subject they wrote. Not the subject
+    # of our own invoice email alone (104334 asked for a book copy).
+    if routing and routing.invoice_ask(routing_text(description or ""), subject):
         return "rafa"
     if tagset & {"ql", "nwa", "gbi", "ttt", "ewc"} or _QUINN_Q.search(customer):
         return "quinn"

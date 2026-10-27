@@ -150,17 +150,18 @@ def note(fwd: Forward, *, staff_email: str, subject: str, assignee: str, lane: s
     ]
     if fwd.date:
         lines.append(f"Sent: {fwd.date}")
-    lines.append(f"Subject: {fwd.subject or subject}")
+    lines.append(f"Subject: {notewords.scrub(fwd.subject or subject)}")
     if fwd.questions:
         lines.append("")
         lines.append("Customer's questions, with a suggested answer from the KB (internal only):")
         for n, question in enumerate(fwd.questions, 1):
-            lines.append(f"{n}. {question}")
+            lines.append(f"{n}. {notewords.scrub(question)}")
             lines.append(f"   Suggested: {notewords.scrub(suggest(question, f"{fwd.subject} {subject}"))}")
     lines.append("")
     target = fwd.sender_email or "the original customer"
     lines.append(f"Needed: reply directly to {target}, not to {staff_email}.")
     lines.append("")
-    lines.append("Forwarded original (full):")
-    lines.append(fwd.body[:6000])
+    # Full text, with trigger words swapped for neutral ones (the original stays on the ticket).
+    lines.append("Forwarded original (full, trigger words neutralised):")
+    lines.append(notewords.scrub(fwd.body[:6000]))
     return "\n".join(lines)

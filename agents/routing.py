@@ -1,6 +1,7 @@
 """Who handles a ticket. Shared by the router, Maya's corrections and flow.decide.
 
 - Refund wording (even mixed with access or translation complaints) goes to Rafa.
+- So do invoice and receipt requests (any language), internal only.
 - Quantum Leap family products (QL, TTT, EWC, NWA, GBI) go to Quinn.
 - A ticket-type correction, swap, upgrade/downgrade or booking change goes to a person.
 Quinn and Rafa write internal notes only. These tickets are never solved by Maya.
@@ -92,6 +93,59 @@ REFUND_INTENT = re.compile(
     r")",
     re.I,
 )
+# Return or refund wording in other languages (live miss 105726, 27 Oct 2026: "deseo devolver la
+# entrada adquirida") and "return my ticket" in English. A return of what was bought is a money ask.
+RETURN_INTENT = re.compile(
+    r"\b(?:"
+    # ES
+    r"devolver\w*|devoluci[o\u00f3]n\w*|reembols\w*|reintegr\w*|"
+    # PT
+    r"devolu[c\u00e7][a\u00e3]o|devolu[c\u00e7][o\u00f5]es|estorn\w*|"
+    # IT
+    r"rimbors\w*|restituire|restituzione|restituit\w*|"
+    # EN: return or give back what was bought; reverse the charge
+    r"return(?:ing)?\s+(?:my|the|our|this|these|those)\s+(?:\w+\s+){0,2}?(?:tickets?|purchase|order|booking|seats?|pass(?:es)?)|"
+    r"give\s+back\s+(?:my|the|our|this)\s+(?:\w+\s+){0,2}?(?:tickets?|purchase|order|seats?)|"
+    r"give\s+(?:my|the|our|this)\s+(?:\w+\s+){0,2}?(?:tickets?|purchase|order|seats?)\s+back|"
+    r"revers(?:e|ing|al of)\s+(?:the|my|this|that)\s+(?:charges?|payments?|transactions?)"
+    r")",
+    re.I,
+)
+
+# Invoice or receipt requests (Rafa, internal only). Own words in the customer's latest turn, or a
+# subject the customer wrote. The subject of our own invoice email ("Re: Invoice 08592",
+# "Invoice invoice no. I-1066-de - (XML)") is not an ask by itself: 104334 asked for a book copy
+# and went to the payments lane only because of that subject.
+INVOICE_WORDS = re.compile(
+    r"\b(?:invoic\w*|receipts?|vat\s+(?:number|no\.?|id)|tax\s+(?:invoice|id)|"
+    r"rechnung\w*|quittung\w*|factu\w*|fattur\w*|fatura\w*|faktur\w*|recibos?|ricevut\w*|re\u00e7us?|ontvangstbewijs\w*)\b",
+    re.I,
+)
+_RECEIPT_NOT_ASK = re.compile(
+    r"\b(?:upon|on|after|confirm(?:ed|ing)?|acknowledg\w*)\s+(?:the\s+)?receipt\b|\breceipt\s+of\s+(?:your|my|the|this)\s+(?:e-?mail|message|letter)",
+    re.I,
+)
+_REPLY_PREFIX = re.compile(r"^\s*(?:(?:re|aw|fw|fwd|wg|tr|rv|sv|vs)\s*:\s*|\[[^\]]*\]\s*)+", re.I)
+_SYSTEM_INVOICE_SUBJECT = re.compile(
+    r"^(?:[^:\n]{0,80}:\s*)?(?:your\s+[^\n]{0,60}?\s)?(?:invoice|rechnung|factuur|facture|factura|fattura|receipt|ontvangstbewijs)\b"
+    r"(?=[^\n]*\d)[\w\s.#:/()\[\]-]*$",
+    re.I,
+)
+
+
+def system_invoice_subject(subject: str) -> bool:
+    """The subject of our own invoice or receipt email (a number, nothing the customer wrote)."""
+    return bool(_SYSTEM_INVOICE_SUBJECT.match(_REPLY_PREFIX.sub("", subject or "").strip()))
+
+
+def invoice_ask(text: str, subject: str = "") -> bool:
+    text = _RECEIPT_NOT_ASK.sub(" ", text or "")
+    if INVOICE_WORDS.search(text):
+        return True
+    subject = subject or ""
+    return bool(subject and not system_invoice_subject(subject) and INVOICE_WORDS.search(_RECEIPT_NOT_ASK.sub(" ", subject)))
+
+
 _CANCEL_MONEY = re.compile(
     rf"\b{_CANCEL}\b[^.!?\n]{{0,80}}\b{_MONEY}|\b{_MONEY}[^.!?\n]{{0,80}}\b{_CANCEL}\b",
     re.I,
@@ -101,7 +155,9 @@ _CANCEL_MONEY = re.compile(
 def refund_ask(text: str) -> bool:
     """Refund wording, or money-back intent in other words (EN plus basic NL/DE/FR/ES)."""
     text = text or ""
-    return bool(REFUND.search(text) or REFUND_INTENT.search(text) or _CANCEL_MONEY.search(text))
+    return bool(
+        REFUND.search(text) or REFUND_INTENT.search(text) or RETURN_INTENT.search(text) or _CANCEL_MONEY.search(text)
+    )
 
 
 # Vendors, platforms and partners who write to the customer inbox. Decided by who
@@ -195,6 +251,8 @@ def owner(text: str, subject: str = "", tags=None) -> str:
     tagset = _tagset(tags)
     if refund_ask(text) or refund_ask(subject) or tagset & RAFA_TAGS:
         return "rafa"
+    if invoice_ask(text, subject):
+        return "rafa"  # invoice and receipt requests: Rafa, internal only (104954, 105610)
     if ql_family(text) or ql_family(subject) or tagset & QUINN_TAGS:
         return "quinn"
     return "maya"

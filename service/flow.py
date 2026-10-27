@@ -61,7 +61,7 @@ _ACCESS_ISSUE = re.compile(
     re.I,
 )
 _MONEY_ASK = re.compile(r"\b(refund|reimburs|money back|chargeback|cancel(?:l?ation|l?ed|l?ing)?)\b", re.I)
-_QUOTE_MARK = re.compile(r"\n-{2,}\s*original message|\nOn .+wrote:|\nFrom:|\n>", re.I)
+_QUOTE_MARK = re.compile(r"\n-{2,}\s*original message|\n[ \t]*On .+wrote:|\nFrom:|\n>", re.I)
 _SIG_CUT = re.compile(r"(?m)^--\s*$|^VAT No\b|^Registered office\b", re.I)
 _SIGNOFF_BLOCK = re.compile(
     r"(?:\n+|^)(?:warm regards|kind regards|best regards|all the best|to your success),?\s*\n[\s\S]*\Z",
@@ -381,8 +381,31 @@ def above_quote(text: str) -> str:
     return body.strip()
 
 
+def _only_quote(text: str) -> bool:
+    lines = [line for line in (text or "").splitlines() if line.strip()]
+    return bool(lines) and all(line.lstrip().startswith(">") for line in lines)
+
+
+def _dequote_lead(text: str) -> str:
+    """A reply that starts with a quote and writes below it (104954): the leading quote block
+    plus the text after it, without the "> " marks, up to the next quote or history marker."""
+    raw = (text or "").lstrip()
+    lines = raw.splitlines()
+    out, seen_plain = [], False
+    for line in lines:
+        quoted = line.lstrip().startswith(">")
+        if quoted and seen_plain:
+            break
+        if not quoted and line.strip():
+            seen_plain = True
+        out.append(re.sub(r"^\s*>+\s?", "", line) if quoted else line)
+    return above_quote("\n".join(out).strip() + "\n")
+
+
 def routing_text(description: str) -> str:
     """Latest customer turn, for routing and the noise classifier."""
+    if _only_quote(above_quote(description or "")):
+        return _dequote_lead(description)
     text = above_quote(description or "")
     chunks = re.split(r"\n(?=(?:Customer|Staff):)", text)
     customers = []
@@ -390,7 +413,14 @@ def routing_text(description: str) -> str:
         if chunk.startswith("Customer:"):
             customers.append(chunk.split(":", 1)[-1].strip())
     if customers:
-        return above_quote(customers[-1])
+        last = above_quote(customers[-1])
+        if not last or _only_quote(last):
+            # The latest turn opens with a quote (104954). Read it from the uncut text.
+            raw = re.split(r"\n(?=(?:Customer|Staff):)", description or "")
+            raw_customers = [c.split(":", 1)[-1] for c in raw if c.startswith("Customer:")]
+            if raw_customers and _only_quote(above_quote(raw_customers[-1].strip())):
+                return _dequote_lead(raw_customers[-1])
+        return last
     return text
 
 
