@@ -593,11 +593,21 @@ def post_internal_note(ticket_id: str, body: str, extra_tags: list[str] | None =
     return post_ticket_update(ticket_id, body, public=False, extra_tags=extra_tags)
 
 
-def solve_without_reply(ticket_id: str, extra_tags: list[str] | None = None) -> tuple[bool, str]:
+def solve_without_reply(
+    ticket_id: str,
+    extra_tags: list[str] | None = None,
+    assignee_email: str | None = None,
+) -> tuple[bool, str]:
     """Close as solved and do not add a comment."""
     ticket: dict = {"status": "solved"}
     if extra_tags:
         ticket["additional_tags"] = extra_tags
+    if assignee_email:
+        ticket["assignee_email"] = assignee_email
+    ok, detail = _put_ticket(ticket_id, ticket)
+    if ok or not assignee_email:
+        return ok, detail
+    ticket.pop("assignee_email", None)
     return _put_ticket(ticket_id, ticket)
 
 
@@ -692,6 +702,7 @@ def _load_context(ticket_id: str) -> dict | None:
         "tags": ticket.get("tags") or [],
         "recipient": str(ticket.get("recipient") or ""),
         "status": str(ticket.get("status") or ""),
+        "assignee_id": str(ticket.get("assignee_id") or ""),
         "created_at": str(ticket.get("created_at") or ""),
         "requester_id": requester_id,
         "requester_email": str(requester.get("email") or ""),
@@ -764,7 +775,9 @@ def _message_from_context(ctx: dict, hints: dict) -> tuple[str, str, str, str, s
         description = (
             "Full public conversation. Answer the latest customer message. "
             "Do not answer a Staff message. "
-            "Do not say you have passed this to the team unless a person has to do something you cannot do.\n\n"
+            "Do not say you have passed this to the team unless a person has to do something you cannot do. "
+            "If an earlier Staff message said the team would look into it, still answer the latest customer "
+            "message from the knowledge hub when the hub has the answer; hand off only when it does not.\n\n"
             + conversation
         )
     else:
@@ -965,7 +978,7 @@ def _apply_disposition(ticket_id: str, disposition: flow.Disposition) -> dict:
         skip_srv_ticket(ticket_id)
         return _pack(disposition, posted=True, assigned=False, reply="", detail="srv skipped")
     if action == "solve_silent":
-        ok, detail = solve_without_reply(ticket_id, disposition.tags)
+        ok, detail = solve_without_reply(ticket_id, disposition.tags, disposition.solve_owner_email or None)
         return _pack(disposition, posted=ok, assigned=False, reply="", detail=detail)
     if action == "solve":
         ok, detail = post_ticket_update(
@@ -975,6 +988,7 @@ def _apply_disposition(ticket_id: str, disposition: flow.Disposition) -> dict:
             status="solved",
             allow_solve=True,
             extra_tags=disposition.tags,
+            assignee_email=disposition.solve_owner_email or None,
         )
         if ok:
             return _pack(disposition, posted=True, assigned=False, reply=disposition.public_body, detail=detail)
@@ -1085,6 +1099,28 @@ def _maybe_refresh(ticket_id: str, ctx: dict, loader, backfill: bool, live: bool
     return fresh, None
 
 
+def _bot_user_id(ctx: dict, bot_email: str) -> str:
+    for uid, user in (ctx.get("users") or {}).items():
+        if bot_email and str(user.get("email") or "").strip().lower() == bot_email.strip().lower():
+            return str(uid)
+    return ""
+
+
+def _owned(disposition: flow.Disposition, ctx: dict, bot_email: str) -> flow.Disposition:
+    """v13 (Akram, 27 Oct): a Maya solve is reassigned to the bot user (Akram) with a prev_assignee tag.
+
+    The same rule holds for every customer reply under an earlier answer: Maya re-checks
+    the hub, answers and solves again. Only a handoff (no answer in the hub, Quinn, Rafa,
+    booking changes, a person asked for) stays open with Meda or Alina.
+    """
+    assignee_id = str(ctx.get("assignee_id") or "")
+    users = ctx.get("users") or {}
+    assignee_email = str((users.get(assignee_id) or {}).get("email") or "")
+    prev = flow.prev_assignee_tag(assignee_id, assignee_email, _bot_user_id(ctx, bot_email), ctx.get("tags") or [])
+    followup = flow.is_followup(ctx.get("comments") or [], str(ctx.get("requester_id") or ""))
+    return flow.with_solve_owner(disposition, bot_email, prev, followup=followup)
+
+
 def _process_ticket(
     ticket_id: str,
     hints: dict | None = None,
@@ -1162,6 +1198,7 @@ def _process_ticket(
             reason=noise_tag,
             noise_tag=noise_tag,
         )
+        disposition = _owned(disposition, ctx, bot)
         if live:
             return poster(ticket_id, disposition)
         return _plan(disposition)
@@ -1280,6 +1317,7 @@ def _process_ticket(
         disposition.public_body = publictext.with_long_wait_apology(disposition.public_body)
         disposition.tags = [*disposition.tags, "ai_long_wait_apology"]
     disposition = _localize(disposition, customer_text)
+    disposition = _owned(disposition, ctx, bot)
     log.info(
         "answer ticket_id=%s lane=%s action=%s agent=%s live=%s reason=%s",
         ticket_id,

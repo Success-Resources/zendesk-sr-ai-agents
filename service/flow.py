@@ -106,6 +106,11 @@ _REASONING = re.compile(
 _KEEP_ACK = {"gdpr_handoff", "unsubscribe_handoff", "masterclass_handoff"}
 
 MEDA_EMAIL = "meda.c@srglobal.com"  # Zendesk user 60727801768601
+MEDA_ID = "60727801768601"
+ALINA_EMAIL = "alina.last@srglobal.com"  # Zendesk user 14193395548057
+ALINA_ID = "14193395548057"
+PREV_ASSIGNEE_PREFIX = "prev_assignee_"
+TAG_FOLLOWUP = "ai_followup_reply"
 
 
 def _env_flag(name: str, default: bool) -> bool:
@@ -231,6 +236,8 @@ class Disposition:
     tags: list[str] = field(default_factory=list)
     lane: str = ""
     claims_handoff: bool = False
+    # v13: who owns a Maya solve (Akram's Zendesk user, the bot login). Empty for handoffs.
+    solve_owner_email: str = ""
 
 
 def parse_webhook_payload(raw: str | bytes) -> dict:
@@ -898,6 +905,62 @@ def backfill_skip_reason(
     if has_agent_public_reply(comments, requester_id):
         return "agent already replied publicly"
     return None
+
+
+def prev_assignee_tag(assignee_id, assignee_email: str = "", bot_id: str = "", existing_tags=()) -> str:
+    """v13 (Akram, 27 Oct): the tag that records who held the ticket before Maya solved it.
+
+    Meda and Alina get names, anyone else their Zendesk id, nobody prev_assignee_none.
+    When the ticket is already Maya's (a reply under her own solve), the earlier tag stays
+    and no new one is added.
+    """
+    aid = str(assignee_id or "").strip()
+    email = (assignee_email or "").strip().lower()
+    if aid and bot_id and aid == str(bot_id):
+        if any(str(tag).startswith(PREV_ASSIGNEE_PREFIX) for tag in existing_tags or ()):
+            return ""
+    if aid == MEDA_ID or email == MEDA_EMAIL:
+        return PREV_ASSIGNEE_PREFIX + "meda"
+    if aid == ALINA_ID or email == ALINA_EMAIL:
+        return PREV_ASSIGNEE_PREFIX + "alina"
+    if not aid:
+        return PREV_ASSIGNEE_PREFIX + "none"
+    return PREV_ASSIGNEE_PREFIX + aid
+
+
+def is_followup(comments: list[Comment], requester_id: str) -> bool:
+    """The latest customer message comes after a public staff or Maya reply."""
+    seen_reply = False
+    latest_after_reply = False
+    for comment in sorted_comments(comments):
+        if not comment.public:
+            continue
+        if str(comment.author_id) == str(requester_id):
+            latest_after_reply = seen_reply
+        else:
+            seen_reply = True
+            latest_after_reply = False
+    return latest_after_reply
+
+
+def with_solve_owner(
+    disposition: Disposition,
+    owner_email: str,
+    prev_tag: str,
+    followup: bool = False,
+) -> Disposition:
+    """v13: every Maya solve, first answer or a reply under an earlier answer, is Akram's.
+
+    Handoffs are untouched: they keep the open status, the note and Meda or Alina.
+    """
+    extra: list[str] = []
+    if followup:
+        extra.append(TAG_FOLLOWUP)
+    if disposition.action in {"solve", "solve_silent"}:
+        disposition.solve_owner_email = (owner_email or "").strip().lower()
+        if prev_tag:
+            extra.append(prev_tag)
+    return merge_tags(disposition, extra) if extra else disposition
 
 
 def merge_tags(disposition: Disposition, extra: list[str]) -> Disposition:
