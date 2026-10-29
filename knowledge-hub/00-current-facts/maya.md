@@ -33,7 +33,7 @@ MMI live and hybrid events are not recorded and there are no replays. Pre-traini
 
 ## When is the next MMI
 
-The next MMI events are MMI Birmingham, United Kingdom, on 6-8 November 2026 at Novotel Birmingham Centre (in person only), and MMI Rome, Italy, on 4-6 December 2026 at Pineta Palace Hotel, Via S. Lino Papa 35. All dates are on https://www.millionairemind.live/.
+The next MMI events are MMI Birmingham, United Kingdom, on 6-8 November 2026 at Novotel Birmingham Centre (in person only), MMI Brussels, Belgium, on 20-22 November 2026 at Crowne Plaza Brussels Airport by IHG (hybrid), and MMI Rome, Italy, on 4-6 December 2026 at Pineta Palace Hotel, Via S. Lino Papa 35. All dates are on https://www.millionairemind.live/.
 
 ## Where is MMI Birmingham
 
@@ -41,7 +41,7 @@ MMI Birmingham is 6-8 November 2026 at Novotel Birmingham Centre. It is in perso
 
 ## Where is MMI Brussels
 
-MMI Brussels is 20-22 November 2026 and it is hybrid. The venue is not confirmed. Say the team will send the venue. Do not guess it.
+MMI Brussels is 20-22 November 2026 at Crowne Plaza Brussels Airport by IHG. It is hybrid.
 
 ## Where is MMI Rome
 

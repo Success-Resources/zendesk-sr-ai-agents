@@ -1,5 +1,5 @@
 """v15 (Akram, 29 Oct): solves follow the API account in ZENDESK_EMAIL (now Evelin), and the
-hub answers "when is the next MMI" with Birmingham and Rome."""
+hub answers "when is the next MMI" with Birmingham, Brussels, and Rome."""
 from __future__ import annotations
 
 import os
@@ -87,6 +87,9 @@ class NextMmiTests(unittest.TestCase):
         self.assertEqual(entry.question, "When is the next MMI")
         self.assertIn("6-8 November 2026", entry.email)
         self.assertIn("Birmingham, United Kingdom", entry.email)
+        self.assertIn("20-22 November 2026", entry.email)
+        self.assertIn("Brussels, Belgium", entry.email)
+        self.assertIn("Crowne Plaza Brussels Airport by IHG", entry.email)
         self.assertIn("4-6 December 2026", entry.email)
         self.assertIn("Rome, Italy", entry.email)
 
@@ -97,6 +100,8 @@ class NextMmiTests(unittest.TestCase):
     def test_prompt_block_has_next_events(self):
         block = facts.prompt_block()
         self.assertIn("next MMI events are Birmingham, United Kingdom, 6-8 November 2026", block)
+        self.assertIn("Brussels, Belgium, 20-22 November 2026", block)
+        self.assertIn("Crowne Plaza Brussels Airport by IHG", block)
         self.assertIn("Rome, Italy, 4-6 December 2026", block)
 
 

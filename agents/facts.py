@@ -33,7 +33,7 @@ EVENTS = {
     },
     "brussels": {
         "dates": "20-22 November 2026",
-        "venue": "",
+        "venue": "Crowne Plaza Brussels Airport by IHG",
         "format": "hybrid",
     },
     "rome": {
@@ -161,10 +161,11 @@ def prompt_block() -> str:
         "Do not claim you resent, unsubscribed, deleted, or saved anything.\n"
         "If the venue is not in the facts below, say the team will send it and set needs_human true.\n"
         "When is the next MMI: the next MMI events are Birmingham, United Kingdom, 6-8 November 2026, "
-        "and Rome, Italy, 4-6 December 2026. Answer with both and the events page "
+        "Brussels, Belgium, 20-22 November 2026, "
+        "and Rome, Italy, 4-6 December 2026. Answer with all three and the events page "
         f"{EVENTS_PAGE}.\n"
         "Birmingham 6-8 November 2026, Novotel Birmingham Centre, in person only. "
-        "Brussels 20-22 November 2026, hybrid, venue unknown. "
+        "Brussels 20-22 November 2026, hybrid, Crowne Plaza Brussels Airport by IHG. "
         "Rome 4-6 December 2026, Pineta Palace Hotel, Via S. Lino Papa 35. "
         "Paris 4-6 December 2026, venue unknown. "
         "Amsterdam 29-31 January 2027, venue unknown. "
