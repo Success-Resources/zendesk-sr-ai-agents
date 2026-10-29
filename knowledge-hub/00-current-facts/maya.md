@@ -1,7 +1,7 @@
 # Current facts — Maya
 
 **Owner agent:** Maya
-**Updated:** 27 October 2026
+**Updated:** 29 October 2026
 
 ## Is there translation or interpretation at MMI
 
@@ -30,6 +30,10 @@ Lunch is not provided. There is no hotel discount for participants.
 ## Is there a recording or replay
 
 MMI live and hybrid events are not recorded and there are no replays. Pre-training recordings are only in the event's Facebook group. Do not send an unverified replay link.
+
+## When is the next MMI
+
+The next MMI events are MMI Birmingham, United Kingdom, on 6-8 November 2026 at Novotel Birmingham Centre (in person only), and MMI Rome, Italy, on 4-6 December 2026 at Pineta Palace Hotel, Via S. Lino Papa 35. All dates are on https://www.millionairemind.live/.
 
 ## Where is MMI Birmingham
 

@@ -1105,15 +1105,39 @@ def _maybe_refresh(ticket_id: str, ctx: dict, loader, backfill: bool, live: bool
     return fresh, None
 
 
+_bot_ids: dict[str, str] = {}
+
+
+def _lookup_bot_user_id(bot_email: str) -> str:
+    """Zendesk id of the API account (ZENDESK_EMAIL), cached per email. Empty when unknown."""
+    email = (bot_email or "").strip().lower()
+    if not email:
+        return ""
+    if email in _bot_ids:
+        return _bot_ids[email]
+    uid = ""
+    data = _zendesk_get("users/me.json")
+    me = (data or {}).get("user") or {}
+    if str(me.get("email") or "").strip().lower() == email and me.get("id"):
+        uid = str(me["id"])
+    if uid:
+        _bot_ids[email] = uid
+    return uid
+
+
 def _bot_user_id(ctx: dict, bot_email: str) -> str:
+    """The solve owner's Zendesk id: the user behind ZENDESK_EMAIL (since 29 Oct, Evelin)."""
     for uid, user in (ctx.get("users") or {}).items():
         if bot_email and str(user.get("email") or "").strip().lower() == bot_email.strip().lower():
             return str(uid)
-    return ""
+    return _lookup_bot_user_id(bot_email)
 
 
 def _owned(disposition: flow.Disposition, ctx: dict, bot_email: str) -> flow.Disposition:
-    """v13 (Akram, 27 Oct): a Maya solve is reassigned to the bot user (Akram) with a prev_assignee tag.
+    """v13 (Akram, 27 Oct): a Maya solve is reassigned to the bot user with a prev_assignee tag.
+
+    The bot user is the Zendesk API account in ZENDESK_EMAIL (Evelin since 29 Oct 2026,
+    Akram before). Nothing is hard-coded: switching the env email moves every solve.
 
     The same rule holds for every customer reply under an earlier answer: Maya re-checks
     the hub, answers and solves again. Only a handoff (no answer in the hub, Quinn, Rafa,

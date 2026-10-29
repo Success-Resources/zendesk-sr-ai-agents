@@ -292,6 +292,8 @@ def best_match(agent: str, subject: str, description: str) -> tuple[Entry | None
         score = title_hit + 0.15 * body_hit
         if _normalize(entry.question) in blob:
             score += 0.45
+        # v15: on a tie the more specific title wins ("next MMI Oslo" over "next MMI").
+        score += 0.01 * len(query & title_tokens)
         ranked.append((score, entry))
     if not ranked:
         return None, 0.0

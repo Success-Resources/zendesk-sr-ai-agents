@@ -236,7 +236,7 @@ class Disposition:
     tags: list[str] = field(default_factory=list)
     lane: str = ""
     claims_handoff: bool = False
-    # v13: who owns a Maya solve (Akram's Zendesk user, the bot login). Empty for handoffs.
+    # v13: who owns a Maya solve (the ZENDESK_EMAIL API user, Evelin since 29 Oct). Empty for handoffs.
     solve_owner_email: str = ""
 
 
@@ -964,7 +964,9 @@ def with_solve_owner(
     prev_tag: str,
     followup: bool = False,
 ) -> Disposition:
-    """v13: every Maya solve, first answer or a reply under an earlier answer, is Akram's.
+    """v13: every Maya solve, first answer or a reply under an earlier answer, goes to owner_email.
+
+    owner_email is the API account in ZENDESK_EMAIL (Evelin since 29 Oct 2026, Akram before).
 
     Handoffs are untouched: they keep the open status, the note and Meda or Alina.
     """
